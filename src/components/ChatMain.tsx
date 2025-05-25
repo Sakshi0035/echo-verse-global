@@ -65,17 +65,17 @@ const ChatMain: React.FC<ChatMainProps> = ({
   const typingUsers = users.filter(u => u.id !== currentUser.id && u.isOnline).slice(0, 1);
 
   return (
-    <div className="flex-1 flex flex-col bg-gray-50 h-screen md:h-auto">
+    <div className="flex-1 flex flex-col bg-gray-900/50 h-screen md:h-auto">
       {/* Header - Hidden on mobile since we have the mobile header in ChatInterface */}
-      <div className="hidden md:block bg-white border-b border-gray-200 p-4">
+      <div className="hidden md:block bg-gray-900/95 backdrop-blur border-b border-blue-500/30 p-4 neon-border">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-semibold">Global Chat</h1>
-            <p className="text-sm text-gray-500">
+            <h1 className="text-xl font-semibold neon-text">Global Chat</h1>
+            <p className="text-sm text-blue-300/70">
               {users.filter(u => u.isOnline).length} users online
             </p>
           </div>
-          <Badge variant="secondary" className="bg-green-100 text-green-800">
+          <Badge variant="secondary" className="bg-blue-500/20 text-blue-300 border-blue-500/50 neon-border">
             Public Room
           </Badge>
         </div>
@@ -85,7 +85,7 @@ const ChatMain: React.FC<ChatMainProps> = ({
       <ScrollArea className="flex-1 p-2 md:p-4" ref={scrollAreaRef}>
         <div className="space-y-4">
           {Object.entries(messageGroups).length === 0 ? (
-            <div className="text-center text-gray-500 mt-8">
+            <div className="text-center text-blue-300/70 mt-8">
               <div className="text-4xl mb-2">💬</div>
               <p className="text-sm md:text-base">Welcome to Echo Verse! Start the conversation.</p>
             </div>
@@ -94,7 +94,7 @@ const ChatMain: React.FC<ChatMainProps> = ({
               <div key={dateKey}>
                 {/* Date Divider */}
                 <div className="flex items-center justify-center my-6">
-                  <div className="bg-gray-200 text-gray-600 text-xs px-3 py-1 rounded-full">
+                  <div className="bg-blue-500/20 text-blue-300 text-xs px-3 py-1 rounded-full border border-blue-500/50">
                     {formatDateDivider(new Date(dateKey))}
                   </div>
                 </div>
@@ -114,11 +114,11 @@ const ChatMain: React.FC<ChatMainProps> = ({
           
           {/* Typing Indicator */}
           {typingUsers.length > 0 && (
-            <div className="flex items-center gap-2 text-sm text-gray-500 pl-4">
+            <div className="flex items-center gap-2 text-sm text-blue-300/70 pl-4">
               <div className="flex gap-1">
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+                <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" />
+                <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
+                <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
               </div>
               <span>{typingUsers[0].username} is typing...</span>
             </div>
@@ -128,15 +128,15 @@ const ChatMain: React.FC<ChatMainProps> = ({
 
       {/* Reply Preview */}
       {replyTo && (
-        <div className="bg-blue-50 border-l-4 border-blue-500 p-3 mx-2 md:mx-4">
+        <div className="bg-blue-500/20 border-l-4 border-blue-500 p-3 mx-2 md:mx-4 neon-border">
           <div className="flex items-center justify-between">
             <div className="text-sm">
-              <span className="font-medium text-blue-700">Replying to {replyTo.username}</span>
-              <p className="text-gray-600 truncate">{replyTo.content}</p>
+              <span className="font-medium text-blue-300">Replying to {replyTo.username}</span>
+              <p className="text-blue-200/70 truncate">{replyTo.content}</p>
             </div>
             <button 
               onClick={() => setReplyTo(null)}
-              className="text-gray-400 hover:text-gray-600 text-lg"
+              className="text-blue-400 hover:text-blue-300 text-lg"
             >
               ×
             </button>
