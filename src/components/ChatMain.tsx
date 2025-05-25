@@ -62,12 +62,12 @@ const ChatMain: React.FC<ChatMainProps> = ({
   };
 
   const messageGroups = groupMessagesByDate(messages);
-  const typingUsers = users.filter(u => u.id !== currentUser.id && u.isOnline).slice(0, 1); // Simulate typing
+  const typingUsers = users.filter(u => u.id !== currentUser.id && u.isOnline).slice(0, 1);
 
   return (
-    <div className="flex-1 flex flex-col bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 p-4">
+    <div className="flex-1 flex flex-col bg-gray-50 h-screen md:h-auto">
+      {/* Header - Hidden on mobile since we have the mobile header in ChatInterface */}
+      <div className="hidden md:block bg-white border-b border-gray-200 p-4">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-semibold">Global Chat</h1>
@@ -82,28 +82,35 @@ const ChatMain: React.FC<ChatMainProps> = ({
       </div>
 
       {/* Messages */}
-      <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
+      <ScrollArea className="flex-1 p-2 md:p-4" ref={scrollAreaRef}>
         <div className="space-y-4">
-          {Object.entries(messageGroups).map(([dateKey, msgs]) => (
-            <div key={dateKey}>
-              {/* Date Divider */}
-              <div className="flex items-center justify-center my-6">
-                <div className="bg-gray-200 text-gray-600 text-xs px-3 py-1 rounded-full">
-                  {formatDateDivider(new Date(dateKey))}
-                </div>
-              </div>
-              
-              {/* Messages for this date */}
-              {msgs.map(message => (
-                <MessageComponent
-                  key={message.id}
-                  message={message}
-                  currentUser={currentUser}
-                  onReply={() => setReplyTo(message)}
-                />
-              ))}
+          {Object.entries(messageGroups).length === 0 ? (
+            <div className="text-center text-gray-500 mt-8">
+              <div className="text-4xl mb-2">💬</div>
+              <p className="text-sm md:text-base">Welcome to Echo Verse! Start the conversation.</p>
             </div>
-          ))}
+          ) : (
+            Object.entries(messageGroups).map(([dateKey, msgs]) => (
+              <div key={dateKey}>
+                {/* Date Divider */}
+                <div className="flex items-center justify-center my-6">
+                  <div className="bg-gray-200 text-gray-600 text-xs px-3 py-1 rounded-full">
+                    {formatDateDivider(new Date(dateKey))}
+                  </div>
+                </div>
+                
+                {/* Messages for this date */}
+                {msgs.map(message => (
+                  <MessageComponent
+                    key={message.id}
+                    message={message}
+                    currentUser={currentUser}
+                    onReply={() => setReplyTo(message)}
+                  />
+                ))}
+              </div>
+            ))
+          )}
           
           {/* Typing Indicator */}
           {typingUsers.length > 0 && (
@@ -121,7 +128,7 @@ const ChatMain: React.FC<ChatMainProps> = ({
 
       {/* Reply Preview */}
       {replyTo && (
-        <div className="bg-blue-50 border-l-4 border-blue-500 p-3 mx-4">
+        <div className="bg-blue-50 border-l-4 border-blue-500 p-3 mx-2 md:mx-4">
           <div className="flex items-center justify-between">
             <div className="text-sm">
               <span className="font-medium text-blue-700">Replying to {replyTo.username}</span>
@@ -129,7 +136,7 @@ const ChatMain: React.FC<ChatMainProps> = ({
             </div>
             <button 
               onClick={() => setReplyTo(null)}
-              className="text-gray-400 hover:text-gray-600"
+              className="text-gray-400 hover:text-gray-600 text-lg"
             >
               ×
             </button>

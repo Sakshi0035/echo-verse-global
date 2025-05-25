@@ -2,6 +2,7 @@
 import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 interface MessageInputProps {
@@ -62,7 +63,7 @@ const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage }) => {
   };
 
   return (
-    <div className="bg-white border-t border-gray-200 p-4">
+    <div className="bg-white border-t border-gray-200 p-2 md:p-4">
       {/* File Previews */}
       {previewFiles.length > 0 && (
         <div className="mb-3 flex gap-2 overflow-x-auto">
@@ -72,19 +73,19 @@ const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage }) => {
                 <img 
                   src={file.url} 
                   alt="Preview" 
-                  className="w-20 h-20 object-cover rounded border"
+                  className="w-16 h-16 md:w-20 md:h-20 object-cover rounded border"
                 />
               ) : (
                 <video 
                   src={file.url} 
-                  className="w-20 h-20 object-cover rounded border"
+                  className="w-16 h-16 md:w-20 md:h-20 object-cover rounded border"
                   muted
                 />
               )}
               <Button
                 size="sm"
                 variant="destructive"
-                className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0"
+                className="absolute -top-2 -right-2 h-5 w-5 md:h-6 md:w-6 rounded-full p-0 text-xs"
                 onClick={() => removePreviewFile(index)}
               >
                 ×
@@ -100,10 +101,10 @@ const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage }) => {
           type="button"
           variant="outline"
           size="sm"
-          className="flex-shrink-0"
+          className="flex-shrink-0 h-8 w-8 md:h-auto md:w-auto p-1 md:p-2"
           onClick={() => fileInputRef.current?.click()}
         >
-          📎
+          <span className="text-lg md:text-base">📎</span>
         </Button>
         <input
           ref={fileInputRef}
@@ -117,8 +118,8 @@ const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage }) => {
         {/* Emoji Picker */}
         <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
           <PopoverTrigger asChild>
-            <Button type="button" variant="outline" size="sm" className="flex-shrink-0">
-              😀
+            <Button type="button" variant="outline" size="sm" className="flex-shrink-0 h-8 w-8 md:h-auto md:w-auto p-1 md:p-2">
+              <span className="text-lg md:text-base">😀</span>
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-64 p-2" align="start">
@@ -140,13 +141,19 @@ const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage }) => {
 
         {/* Message Input */}
         <div className="flex-1">
-          <Input
-            type="text"
+          <Textarea
             placeholder="Type a message..."
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            className="resize-none"
+            className="resize-none min-h-[40px] max-h-[120px] border-gray-300"
             maxLength={1000}
+            rows={1}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSubmit(e);
+              }
+            }}
           />
         </div>
 
@@ -154,9 +161,10 @@ const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage }) => {
         <Button 
           type="submit" 
           disabled={!message.trim() && previewFiles.length === 0}
-          className="flex-shrink-0"
+          className="flex-shrink-0 h-8 w-8 md:h-auto md:w-auto p-2"
         >
-          Send
+          <span className="hidden md:inline">Send</span>
+          <span className="md:hidden text-lg">→</span>
         </Button>
       </form>
     </div>
