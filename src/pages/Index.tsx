@@ -37,43 +37,6 @@ const Index = () => {
   useEffect(() => {
     // Simulate real-time connection
     setIsConnected(true);
-    
-    // Load demo data
-    const demoUsers: User[] = [
-      { id: '1', username: 'Alice', isOnline: true, lastSeen: new Date() },
-      { id: '2', username: 'Bob', isOnline: false, lastSeen: new Date(Date.now() - 300000) },
-      { id: '3', username: 'Charlie', isOnline: true, lastSeen: new Date() },
-    ];
-    
-    const demoMessages: Message[] = [
-      {
-        id: '1',
-        userId: '1',
-        username: 'Alice',
-        content: 'Hello everyone! 👋',
-        type: 'text',
-        timestamp: new Date(Date.now() - 3600000),
-        isPrivate: false,
-        reactions: { '👍': ['2'], '❤️': ['3'] },
-        readBy: ['1', '2', '3'],
-        isEdited: false
-      },
-      {
-        id: '2',
-        userId: '2',
-        username: 'Bob',
-        content: 'Hey Alice! How are you doing?',
-        type: 'text',
-        timestamp: new Date(Date.now() - 3000000),
-        isPrivate: false,
-        reactions: {},
-        readBy: ['1', '2'],
-        isEdited: false
-      }
-    ];
-    
-    setUsers(demoUsers);
-    setMessages(demoMessages);
   }, []);
 
   const handleLogin = (username: string) => {
