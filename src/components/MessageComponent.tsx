@@ -100,14 +100,17 @@ const MessageComponent: React.FC<MessageComponentProps> = ({
       )}
       
       <div className={`max-w-md ${isOwnMessage ? 'order-first' : ''}`}>
-        {!isOwnMessage && (
-          <div 
-            className="text-sm font-medium text-blue-300 mb-1 cursor-pointer hover:text-blue-200 transition-colors"
-            onClick={handleUsernameClick}
-          >
-            {message.username}
-          </div>
-        )}
+        {/* Always show username for all messages */}
+        <div 
+          className={`text-sm font-medium mb-1 transition-colors ${
+            isOwnMessage 
+              ? 'text-blue-300 text-right' 
+              : 'text-blue-300 cursor-pointer hover:text-blue-200'
+          }`}
+          onClick={!isOwnMessage ? handleUsernameClick : undefined}
+        >
+          {message.username}
+        </div>
         
         <div className={`rounded-lg p-3 ${
           isOwnMessage 
