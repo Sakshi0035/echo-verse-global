@@ -8,9 +8,10 @@ import { Paperclip, Smile, Send } from 'lucide-react';
 
 interface MessageInputProps {
   onSendMessage: (content: string, type?: 'text' | 'image' | 'video') => void;
+  disabled?: boolean;
 }
 
-const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage }) => {
+const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage, disabled = false }) => {
   const [message, setMessage] = useState('');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [previewFiles, setPreviewFiles] = useState<{ type: 'image' | 'video', url: string, file: File }[]>([]);
@@ -27,6 +28,8 @@ const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage }) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (disabled) return;
+    
     if (previewFiles.length > 0) {
       previewFiles.forEach(file => {
         onSendMessage(file.url, file.type);
@@ -41,6 +44,8 @@ const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage }) => {
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (disabled) return;
+    
     const files = Array.from(e.target.files || []);
     
     files.forEach(file => {
@@ -65,6 +70,7 @@ const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage }) => {
   };
 
   const insertEmoji = (emoji: string) => {
+    if (disabled) return;
     setMessage(prev => prev + emoji);
     setShowEmojiPicker(false);
   };
@@ -108,7 +114,8 @@ const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage }) => {
           type="button"
           variant="outline"
           size="sm"
-          className="flex-shrink-0 h-8 w-8 md:h-auto md:w-auto p-1 md:p-2 bg-blue-500/20 border-blue-500/50 text-blue-300 hover:bg-blue-500/30 hover:text-blue-200"
+          disabled={disabled}
+          className="flex-shrink-0 h-8 w-8 md:h-auto md:w-auto p-1 md:p-2 bg-blue-500/20 border-blue-500/50 text-blue-300 hover:bg-blue-500/30 hover:text-blue-200 disabled:opacity-50"
           onClick={() => fileInputRef.current?.click()}
         >
           <Paperclip className="h-4 w-4" />
@@ -120,6 +127,7 @@ const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage }) => {
           multiple
           className="hidden"
           onChange={handleFileSelect}
+          disabled={disabled}
         />
 
         {/* Emoji Picker */}
@@ -129,7 +137,8 @@ const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage }) => {
               type="button" 
               variant="outline" 
               size="sm" 
-              className="flex-shrink-0 h-8 w-8 md:h-auto md:w-auto p-1 md:p-2 bg-blue-500/20 border-blue-500/50 text-blue-300 hover:bg-blue-500/30 hover:text-blue-200"
+              disabled={disabled}
+              className="flex-shrink-0 h-8 w-8 md:h-auto md:w-auto p-1 md:p-2 bg-blue-500/20 border-blue-500/50 text-blue-300 hover:bg-blue-500/30 hover:text-blue-200 disabled:opacity-50"
             >
               <Smile className="h-4 w-4" />
             </Button>
@@ -161,10 +170,11 @@ const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage }) => {
         {/* Message Input */}
         <div className="flex-1">
           <Textarea
-            placeholder="Type a message..."
+            placeholder={disabled ? "You are temporarily suspended from sending messages..." : "Type a message..."}
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            className="resize-none min-h-[40px] max-h-[120px] bg-gray-800/50 border-blue-500/30 text-blue-100 placeholder:text-blue-300/50 focus:border-blue-400 focus:ring-blue-400"
+            disabled={disabled}
+            className="resize-none min-h-[40px] max-h-[120px] bg-gray-800/50 border-blue-500/30 text-blue-100 placeholder:text-blue-300/50 focus:border-blue-400 focus:ring-blue-400 disabled:opacity-50"
             maxLength={1000}
             rows={1}
             onKeyDown={(e) => {
@@ -179,8 +189,8 @@ const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage }) => {
         {/* Send Button */}
         <Button 
           type="submit" 
-          disabled={!message.trim() && previewFiles.length === 0}
-          className="flex-shrink-0 h-8 w-8 md:h-auto md:w-auto p-2 neon-button"
+          disabled={disabled || (!message.trim() && previewFiles.length === 0)}
+          className="flex-shrink-0 h-8 w-8 md:h-auto md:w-auto p-2 neon-button disabled:opacity-50"
         >
           <span className="hidden md:inline">Send</span>
           <Send className="md:hidden h-4 w-4" />

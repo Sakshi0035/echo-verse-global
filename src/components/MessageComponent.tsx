@@ -13,6 +13,7 @@ interface MessageComponentProps {
   onDelete?: (messageId: string) => void;
   onReport?: (messageId: string) => void;
   onReaction?: (messageId: string, emoji: string) => void;
+  onUsernameClick?: (userId: string) => void;
 }
 
 const MessageComponent: React.FC<MessageComponentProps> = ({
@@ -21,7 +22,8 @@ const MessageComponent: React.FC<MessageComponentProps> = ({
   onReply,
   onDelete,
   onReport,
-  onReaction
+  onReaction,
+  onUsernameClick
 }) => {
   const [showReactions, setShowReactions] = useState(false);
   const isOwnMessage = message.userId === currentUser.id;
@@ -46,6 +48,12 @@ const MessageComponent: React.FC<MessageComponentProps> = ({
   const handleReport = () => {
     if (onReport && !isOwnMessage) {
       onReport(message.id);
+    }
+  };
+
+  const handleUsernameClick = () => {
+    if (onUsernameClick && !isOwnMessage) {
+      onUsernameClick(message.userId);
     }
   };
 
@@ -93,7 +101,10 @@ const MessageComponent: React.FC<MessageComponentProps> = ({
       
       <div className={`max-w-md ${isOwnMessage ? 'order-first' : ''}`}>
         {!isOwnMessage && (
-          <div className="text-sm font-medium text-blue-300 mb-1">
+          <div 
+            className="text-sm font-medium text-blue-300 mb-1 cursor-pointer hover:text-blue-200 transition-colors"
+            onClick={handleUsernameClick}
+          >
             {message.username}
           </div>
         )}
