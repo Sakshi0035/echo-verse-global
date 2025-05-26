@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
+import { ArrowLeft, MoreVertical, Trash2 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 interface PrivateChatProps {
   currentUser: User;
@@ -14,6 +16,8 @@ interface PrivateChatProps {
   messages: Message[];
   onSendMessage: (content: string, type?: 'text' | 'image' | 'video', recipientId?: string) => void;
   onBack: () => void;
+  onDeleteMessage: (messageId: string) => void;
+  onReportMessage: (messageId: string) => void;
 }
 
 const PrivateChat: React.FC<PrivateChatProps> = ({
@@ -21,10 +25,13 @@ const PrivateChat: React.FC<PrivateChatProps> = ({
   chatPartner,
   messages,
   onSendMessage,
-  onBack
+  onBack,
+  onDeleteMessage,
+  onReportMessage
 }) => {
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -68,32 +75,63 @@ const PrivateChat: React.FC<PrivateChatProps> = ({
   const messageGroups = groupMessagesByDate(messages);
 
   const handleClearChat = () => {
-    console.log('Clearing chat with', chatPartner.username);
+    // Clear all private messages between current user and chat partner
+    messages.forEach(message => {
+      if (message.isPrivate && 
+          ((message.userId === currentUser.id && message.recipientId === chatPartner.id) ||
+           (message.userId === chatPartner.id && message.recipientId === currentUser.id))) {
+        onDeleteMessage(message.id);
+      }
+    });
+    
+    toast({
+      title: "Chat cleared",
+      description: `All messages with ${chatPartner.username} have been deleted.`,
+    });
+  };
+
+  const handleDeleteChat = () => {
+    handleClearChat();
+    onBack();
   };
 
   const handleReport = () => {
-    console.log('Reporting user', chatPartner.username);
+    // Report the chat partner - this would report all their messages in this chat
+    const partnerMessages = messages.filter(m => m.userId === chatPartner.id);
+    if (partnerMessages.length > 0) {
+      onReportMessage(partnerMessages[0].id); // Report using the first message as reference
+    }
+    
+    toast({
+      title: "User reported",
+      description: `${chatPartner.username} has been reported and suspended for 30 minutes.`,
+    });
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-gray-900 flex flex-col" style={{background: 'linear-gradient(135deg, #0f0f0f 0%, #1a1a2e 50%, #16213e 100%)'}}>
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 p-4">
+      <div className="bg-gray-900/95 backdrop-blur border-b border-blue-500/30 p-4 neon-border">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" onClick={onBack}>
-              ←
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={onBack}
+              className="text-blue-400 hover:text-blue-300 hover:bg-blue-500/20"
+            >
+              <ArrowLeft className="h-4 w-4" />
             </Button>
             <div className="flex items-center gap-3">
               <div className="relative">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white font-medium">
+                <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white font-medium shadow-glow-blue">
                   {chatPartner.username[0].toUpperCase()}
                 </div>
-                <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${chatPartner.isOnline ? 'bg-green-500' : 'bg-gray-400'}`} />
+                <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-gray-900 ${chatPartner.isOnline ? 'bg-green-400 shadow-glow-green' : 'bg-gray-400'}`} />
               </div>
               <div>
-                <h1 className="font-semibold">{chatPartner.username}</h1>
-                <p className="text-sm text-gray-500">
+                <h1 className="font-semibold text-blue-200">{chatPartner.username}</h1>
+                <p className="text-sm text-blue-300/70">
                   {chatPartner.isOnline ? 'Online' : `Last seen ${chatPartner.lastSeen.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`}
                 </p>
               </div>
@@ -101,21 +139,39 @@ const PrivateChat: React.FC<PrivateChatProps> = ({
           </div>
           
           <div className="flex items-center gap-2">
-            <Badge variant="outline" className="bg-blue-50 text-blue-700">
+            <Badge variant="outline" className="bg-blue-500/20 text-blue-300 border-blue-500/50">
               Private Chat
             </Badge>
             
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm">
-                  ⋯
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  className="text-blue-400 hover:text-blue-300 hover:bg-blue-500/20"
+                >
+                  <MoreVertical className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={handleClearChat}>
+              <DropdownMenuContent align="end" className="bg-gray-800 border-blue-500/30">
+                <DropdownMenuItem 
+                  onClick={handleClearChat}
+                  className="text-blue-200 hover:bg-blue-500/20"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
                   Clear Chat
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleReport} className="text-red-600">
+                <DropdownMenuItem 
+                  onClick={handleDeleteChat}
+                  className="text-blue-200 hover:bg-blue-500/20"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete Chat
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={handleReport} 
+                  className="text-red-400 hover:bg-red-500/20"
+                >
                   Report User
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -128,7 +184,7 @@ const PrivateChat: React.FC<PrivateChatProps> = ({
       <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
         <div className="space-y-4">
           {Object.keys(messageGroups).length === 0 ? (
-            <div className="text-center text-gray-500 mt-8">
+            <div className="text-center text-blue-300/70 mt-8">
               <div className="text-4xl mb-2">💬</div>
               <p>Start a conversation with {chatPartner.username}</p>
             </div>
@@ -137,7 +193,7 @@ const PrivateChat: React.FC<PrivateChatProps> = ({
               <div key={dateKey}>
                 {/* Date Divider */}
                 <div className="flex items-center justify-center my-6">
-                  <div className="bg-gray-200 text-gray-600 text-xs px-3 py-1 rounded-full">
+                  <div className="bg-blue-500/20 text-blue-300 text-xs px-3 py-1 rounded-full border border-blue-500/50">
                     {formatDateDivider(new Date(dateKey))}
                   </div>
                 </div>
@@ -149,6 +205,8 @@ const PrivateChat: React.FC<PrivateChatProps> = ({
                     message={message}
                     currentUser={currentUser}
                     onReply={() => setReplyTo(message)}
+                    onDelete={onDeleteMessage}
+                    onReport={onReportMessage}
                   />
                 ))}
               </div>
@@ -157,11 +215,11 @@ const PrivateChat: React.FC<PrivateChatProps> = ({
           
           {/* Typing Indicator */}
           {chatPartner.isOnline && (
-            <div className="flex items-center gap-2 text-sm text-gray-500 pl-4 opacity-50">
+            <div className="flex items-center gap-2 text-sm text-blue-300/70 pl-4 opacity-50">
               <div className="flex gap-1">
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+                <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" />
+                <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
+                <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
               </div>
               <span>{chatPartner.username} is typing...</span>
             </div>
@@ -171,15 +229,15 @@ const PrivateChat: React.FC<PrivateChatProps> = ({
 
       {/* Reply Preview */}
       {replyTo && (
-        <div className="bg-blue-50 border-l-4 border-blue-500 p-3 mx-4">
+        <div className="bg-blue-500/20 border-l-4 border-blue-500 p-3 mx-4 neon-border">
           <div className="flex items-center justify-between">
             <div className="text-sm">
-              <span className="font-medium text-blue-700">Replying to {replyTo.username}</span>
-              <p className="text-gray-600 truncate">{replyTo.content}</p>
+              <span className="font-medium text-blue-300">Replying to {replyTo.username}</span>
+              <p className="text-blue-200/70 truncate">{replyTo.content}</p>
             </div>
             <button 
               onClick={() => setReplyTo(null)}
-              className="text-gray-400 hover:text-gray-600"
+              className="text-blue-400 hover:text-blue-300"
             >
               ×
             </button>
@@ -193,6 +251,7 @@ const PrivateChat: React.FC<PrivateChatProps> = ({
           onSendMessage(content, type, chatPartner.id);
           setReplyTo(null);
         }}
+        disabled={currentUser.isTimedOut && currentUser.timeoutUntil && new Date(currentUser.timeoutUntil) > new Date()}
       />
     </div>
   );

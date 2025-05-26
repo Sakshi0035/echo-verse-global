@@ -14,6 +14,7 @@ interface ChatMainProps {
   onDeleteMessage: (messageId: string) => void;
   onReportMessage: (messageId: string) => void;
   onReaction: (messageId: string, emoji: string) => void;
+  onUsernameClick: (userId: string) => void;
 }
 
 const ChatMain: React.FC<ChatMainProps> = ({
@@ -23,7 +24,8 @@ const ChatMain: React.FC<ChatMainProps> = ({
   onSendMessage,
   onDeleteMessage,
   onReportMessage,
-  onReaction
+  onReaction,
+  onUsernameClick
 }) => {
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -115,6 +117,7 @@ const ChatMain: React.FC<ChatMainProps> = ({
                     onDelete={onDeleteMessage}
                     onReport={onReportMessage}
                     onReaction={onReaction}
+                    onUsernameClick={onUsernameClick}
                   />
                 ))}
               </div>
@@ -159,6 +162,7 @@ const ChatMain: React.FC<ChatMainProps> = ({
           onSendMessage(content, type, undefined, replyTo?.id);
           setReplyTo(null);
         }}
+        disabled={currentUser.isTimedOut && currentUser.timeoutUntil && new Date(currentUser.timeoutUntil) > new Date()}
       />
     </div>
   );

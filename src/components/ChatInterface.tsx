@@ -18,6 +18,7 @@ interface ChatInterfaceProps {
   onReaction: (messageId: string, emoji: string) => void;
   onLogout: () => void;
   isConnected: boolean;
+  onUsernameClick: (userId: string) => string;
 }
 
 const ChatInterface: React.FC<ChatInterfaceProps> = ({
@@ -29,7 +30,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   onReportMessage,
   onReaction,
   onLogout,
-  isConnected
+  isConnected,
+  onUsernameClick
 }) => {
   const [activePrivateChat, setActivePrivateChat] = useState<string | null>(null);
   const [dmUsers, setDmUsers] = useState<string[]>([]);
@@ -47,6 +49,12 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     setActivePrivateChat(null);
   };
 
+  const handleUsernameClickInChat = (userId: string) => {
+    if (userId !== currentUser.id) {
+      handlePrivateChat(userId);
+    }
+  };
+
   if (activePrivateChat) {
     const chatPartner = users.find(u => u.id === activePrivateChat);
     if (!chatPartner) return null;
@@ -62,6 +70,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         )}
         onSendMessage={onSendMessage}
         onBack={handleBackToMain}
+        onDeleteMessage={onDeleteMessage}
+        onReportMessage={onReportMessage}
       />
     );
   }
@@ -121,6 +131,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           onDeleteMessage={onDeleteMessage}
           onReportMessage={onReportMessage}
           onReaction={onReaction}
+          onUsernameClick={handleUsernameClickInChat}
         />
       </div>
     </div>
