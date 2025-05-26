@@ -4,17 +4,24 @@ import { Message, User } from '../pages/Index';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
+import { MoreHorizontal, Trash2, AlertTriangle } from 'lucide-react';
 
 interface MessageComponentProps {
   message: Message;
   currentUser: User;
   onReply: () => void;
+  onDelete?: (messageId: string) => void;
+  onReport?: (messageId: string) => void;
+  onReaction?: (messageId: string, emoji: string) => void;
 }
 
 const MessageComponent: React.FC<MessageComponentProps> = ({
   message,
   currentUser,
-  onReply
+  onReply,
+  onDelete,
+  onReport,
+  onReaction
 }) => {
   const [showReactions, setShowReactions] = useState(false);
   const isOwnMessage = message.userId === currentUser.id;
@@ -24,12 +31,22 @@ const MessageComponent: React.FC<MessageComponentProps> = ({
   };
 
   const handleReaction = (emoji: string) => {
-    // This would be implemented with real-time updates
-    console.log(`Adding reaction ${emoji} to message ${message.id}`);
+    if (onReaction) {
+      onReaction(message.id, emoji);
+    }
+    setShowReactions(false);
+  };
+
+  const handleDelete = () => {
+    if (onDelete && isOwnMessage) {
+      onDelete(message.id);
+    }
   };
 
   const handleReport = () => {
-    console.log(`Reporting message ${message.id}`);
+    if (onReport && !isOwnMessage) {
+      onReport(message.id);
+    }
   };
 
   const renderMessageContent = () => {
@@ -67,7 +84,7 @@ const MessageComponent: React.FC<MessageComponentProps> = ({
   };
 
   return (
-    <div className={`flex gap-3 ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
+    <div className={`group flex gap-3 ${isOwnMessage ? 'justify-end' : 'justify-start'} hover:bg-blue-500/5 p-2 rounded-lg transition-colors`}>
       {!isOwnMessage && (
         <div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white text-sm font-medium flex-shrink-0">
           {message.username[0].toUpperCase()}
@@ -76,19 +93,19 @@ const MessageComponent: React.FC<MessageComponentProps> = ({
       
       <div className={`max-w-md ${isOwnMessage ? 'order-first' : ''}`}>
         {!isOwnMessage && (
-          <div className="text-sm font-medium text-gray-700 mb-1">
+          <div className="text-sm font-medium text-blue-300 mb-1">
             {message.username}
           </div>
         )}
         
         <div className={`rounded-lg p-3 ${
           isOwnMessage 
-            ? 'bg-blue-500 text-white' 
-            : 'bg-white border border-gray-200'
+            ? 'bg-blue-500 text-white neon-border' 
+            : 'bg-gray-800 border border-gray-700 text-blue-100'
         }`}>
           {message.replyTo && (
-            <div className="bg-gray-100 border-l-4 border-gray-300 p-2 mb-2 rounded text-sm">
-              <span className="text-gray-500">Reply to message</span>
+            <div className="bg-blue-500/20 border-l-4 border-blue-400 p-2 mb-2 rounded text-sm">
+              <span className="text-blue-300">Reply to message</span>
             </div>
           )}
           
@@ -103,7 +120,7 @@ const MessageComponent: React.FC<MessageComponentProps> = ({
             <div className="flex items-center gap-1">
               {/* Read receipts */}
               {isOwnMessage && message.readBy.length > 1 && (
-                <Badge variant="secondary" className="text-xs px-1 py-0">
+                <Badge variant="secondary" className="text-xs px-1 py-0 bg-blue-500/20 text-blue-300">
                   ✓✓
                 </Badge>
               )}
@@ -111,24 +128,30 @@ const MessageComponent: React.FC<MessageComponentProps> = ({
               {/* Message options */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100">
-                    <span className="text-xs">⋯</span>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity text-blue-400 hover:text-blue-300 hover:bg-blue-500/20"
+                  >
+                    <MoreHorizontal className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={onReply}>
+                <DropdownMenuContent align="end" className="bg-gray-800 border-gray-700">
+                  <DropdownMenuItem onClick={onReply} className="text-blue-300 hover:bg-blue-500/20">
                     Reply
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setShowReactions(!showReactions)}>
+                  <DropdownMenuItem onClick={() => setShowReactions(!showReactions)} className="text-blue-300 hover:bg-blue-500/20">
                     React
                   </DropdownMenuItem>
                   {!isOwnMessage && (
-                    <DropdownMenuItem onClick={handleReport} className="text-red-600">
+                    <DropdownMenuItem onClick={handleReport} className="text-red-400 hover:bg-red-500/20">
+                      <AlertTriangle className="h-4 w-4 mr-2" />
                       Report
                     </DropdownMenuItem>
                   )}
                   {isOwnMessage && (
-                    <DropdownMenuItem className="text-red-600">
+                    <DropdownMenuItem onClick={handleDelete} className="text-red-400 hover:bg-red-500/20">
+                      <Trash2 className="h-4 w-4 mr-2" />
                       Delete
                     </DropdownMenuItem>
                   )}
@@ -146,7 +169,7 @@ const MessageComponent: React.FC<MessageComponentProps> = ({
                 key={emoji}
                 variant="ghost"
                 size="sm"
-                className="h-6 px-2 text-xs bg-gray-100 hover:bg-gray-200"
+                className="h-6 px-2 text-xs bg-blue-500/20 text-blue-300 border border-blue-500/50 hover:bg-blue-500/30"
                 onClick={() => handleReaction(emoji)}
               >
                 {emoji} {users.length}
@@ -157,17 +180,14 @@ const MessageComponent: React.FC<MessageComponentProps> = ({
         
         {/* Quick reactions */}
         {showReactions && (
-          <div className="flex gap-1 mt-2">
-            {['👍', '❤️', '😂', '😮', '😢', '😡'].map(emoji => (
+          <div className="flex gap-1 mt-2 p-2 bg-gray-800 rounded-lg border border-gray-700">
+            {['👍', '❤️', '😂', '😮', '😢', '😡', '🔥', '👏', '🎉', '💯'].map(emoji => (
               <Button
                 key={emoji}
                 variant="ghost"
                 size="sm"
-                className="h-8 w-8 p-0"
-                onClick={() => {
-                  handleReaction(emoji);
-                  setShowReactions(false);
-                }}
+                className="h-8 w-8 p-0 hover:bg-blue-500/20"
+                onClick={() => handleReaction(emoji)}
               >
                 {emoji}
               </Button>

@@ -13,6 +13,10 @@ interface ChatInterfaceProps {
   users: User[];
   messages: Message[];
   onSendMessage: (content: string, type?: 'text' | 'image' | 'video', recipientId?: string, replyToId?: string) => void;
+  onDeleteMessage: (messageId: string) => void;
+  onReportMessage: (messageId: string) => void;
+  onReaction: (messageId: string, emoji: string) => void;
+  onLogout: () => void;
   isConnected: boolean;
 }
 
@@ -21,6 +25,10 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   users,
   messages,
   onSendMessage,
+  onDeleteMessage,
+  onReportMessage,
+  onReaction,
+  onLogout,
   isConnected
 }) => {
   const [activePrivateChat, setActivePrivateChat] = useState<string | null>(null);
@@ -32,7 +40,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     if (!dmUsers.includes(userId)) {
       setDmUsers(prev => [...prev, userId]);
     }
-    setSidebarOpen(false); // Close sidebar on mobile after selection
+    setSidebarOpen(false);
   };
 
   const handleBackToMain = () => {
@@ -67,6 +75,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           users={users}
           dmUsers={dmUsers}
           onPrivateChat={handlePrivateChat}
+          onLogout={onLogout}
           isConnected={isConnected}
         />
       </div>
@@ -79,6 +88,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
             users={users}
             dmUsers={dmUsers}
             onPrivateChat={handlePrivateChat}
+            onLogout={onLogout}
             isConnected={isConnected}
           />
         </SheetContent>
@@ -108,6 +118,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           messages={messages.filter(m => !m.isPrivate)}
           users={users}
           onSendMessage={onSendMessage}
+          onDeleteMessage={onDeleteMessage}
+          onReportMessage={onReportMessage}
+          onReaction={onReaction}
         />
       </div>
     </div>

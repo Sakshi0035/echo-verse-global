@@ -11,13 +11,19 @@ interface ChatMainProps {
   messages: Message[];
   users: User[];
   onSendMessage: (content: string, type?: 'text' | 'image' | 'video', recipientId?: string, replyToId?: string) => void;
+  onDeleteMessage: (messageId: string) => void;
+  onReportMessage: (messageId: string) => void;
+  onReaction: (messageId: string, emoji: string) => void;
 }
 
 const ChatMain: React.FC<ChatMainProps> = ({
   currentUser,
   messages,
   users,
-  onSendMessage
+  onSendMessage,
+  onDeleteMessage,
+  onReportMessage,
+  onReaction
 }) => {
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -106,6 +112,9 @@ const ChatMain: React.FC<ChatMainProps> = ({
                     message={message}
                     currentUser={currentUser}
                     onReply={() => setReplyTo(message)}
+                    onDelete={onDeleteMessage}
+                    onReport={onReportMessage}
+                    onReaction={onReaction}
                   />
                 ))}
               </div>
