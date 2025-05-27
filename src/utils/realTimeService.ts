@@ -1,22 +1,33 @@
 
-// Simple real-time messaging service using localStorage events
+import { supabase } from "@/integrations/supabase/client";
+
+// Enhanced real-time messaging service using Supabase
 class RealTimeService {
   private listeners: ((data: any) => void)[] = [];
-  private storageKey = 'safeyou_global_messages';
-  private usersKey = 'safeyou_global_users';
+  private channel: any = null;
 
   constructor() {
-    // Listen for storage changes from other tabs/windows
-    window.addEventListener('storage', this.handleStorageChange.bind(this));
+    this.initializeChannel();
   }
 
-  private handleStorageChange(event: StorageEvent) {
-    if (event.key === this.storageKey || event.key === this.usersKey) {
-      this.notifyListeners({
-        type: event.key === this.storageKey ? 'messages' : 'users',
-        data: event.newValue ? JSON.parse(event.newValue) : null
-      });
-    }
+  private initializeChannel() {
+    // Create a channel for real-time messaging
+    this.channel = supabase.channel('safeyou-chat', {
+      config: {
+        broadcast: { self: true },
+        presence: { key: 'user-presence' }
+      }
+    });
+
+    // Subscribe to broadcast events
+    this.channel
+      .on('broadcast', { event: 'message' }, (payload: any) => {
+        this.notifyListeners({ type: 'messages', data: payload.data });
+      })
+      .on('broadcast', { event: 'users' }, (payload: any) => {
+        this.notifyListeners({ type: 'users', data: payload.data });
+      })
+      .subscribe();
   }
 
   subscribe(callback: (data: any) => void) {
@@ -30,26 +41,101 @@ class RealTimeService {
     this.listeners.forEach(listener => listener(data));
   }
 
-  // Broadcast message to all connected clients
-  broadcastMessage(message: any) {
-    const messages = this.getMessages();
-    const newMessages = [...messages, message];
-    localStorage.setItem(this.storageKey, JSON.stringify(newMessages));
-    
-    // Trigger storage event manually for same window
-    this.notifyListeners({ type: 'messages', data: newMessages });
+  // Broadcast message to all connected clients via Supabase
+  async broadcastMessage(message: any) {
+    try {
+      // Store message in Supabase database
+      const { error } = await supabase
+        .from('messages')
+        .insert([{
+          content: message.content,
+          username: message.username,
+          reply_to_id: message.replyTo || null,
+          reaction: message.reactions || {}
+        }]);
+
+      if (error) {
+        console.error('Error storing message:', error);
+        return;
+      }
+
+      // Also broadcast via real-time channel for immediate delivery
+      const messages = await this.getMessages();
+      await this.channel.send({
+        type: 'broadcast',
+        event: 'message',
+        data: messages
+      });
+
+      // Update local storage as fallback
+      localStorage.setItem('safeyou_global_messages', JSON.stringify(messages));
+    } catch (error) {
+      console.error('Error broadcasting message:', error);
+      // Fallback to localStorage only
+      const messages = this.getMessages();
+      const newMessages = [...messages, message];
+      localStorage.setItem('safeyou_global_messages', JSON.stringify(newMessages));
+      this.notifyListeners({ type: 'messages', data: newMessages });
+    }
   }
 
   // Broadcast user update to all connected clients
-  broadcastUserUpdate(users: any[]) {
-    localStorage.setItem(this.usersKey, JSON.stringify(users));
-    
-    // Trigger storage event manually for same window
-    this.notifyListeners({ type: 'users', data: users });
+  async broadcastUserUpdate(users: any[]) {
+    try {
+      await this.channel.send({
+        type: 'broadcast',
+        event: 'users',
+        data: users
+      });
+      
+      // Update local storage as fallback
+      localStorage.setItem('safeyou_global_users', JSON.stringify(users));
+    } catch (error) {
+      console.error('Error broadcasting user update:', error);
+      // Fallback to localStorage only
+      localStorage.setItem('safeyou_global_users', JSON.stringify(users));
+      this.notifyListeners({ type: 'users', data: users });
+    }
   }
 
-  getMessages() {
-    const stored = localStorage.getItem(this.storageKey);
+  async getMessages() {
+    try {
+      // Try to get messages from Supabase first
+      const { data, error } = await supabase
+        .from('messages')
+        .select('*')
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching messages:', error);
+        // Fallback to localStorage
+        return this.getLocalMessages();
+      }
+
+      // Transform Supabase data to match expected format
+      const transformedMessages = data?.map((msg: any) => ({
+        id: msg.id,
+        userId: msg.username, // Using username as userId for compatibility
+        username: msg.username,
+        content: msg.content,
+        type: 'text',
+        timestamp: new Date(msg.created_at),
+        isPrivate: false,
+        reactions: msg.reaction || {},
+        readBy: [],
+        isEdited: false,
+        replyTo: msg.reply_to_id
+      })) || [];
+
+      return transformedMessages;
+    } catch (error) {
+      console.error('Error in getMessages:', error);
+      return this.getLocalMessages();
+    }
+  }
+
+  private getLocalMessages() {
+    const stored = localStorage.getItem('safeyou_global_messages');
     return stored ? JSON.parse(stored).map((msg: any) => ({
       ...msg,
       timestamp: new Date(msg.timestamp)
@@ -57,7 +143,7 @@ class RealTimeService {
   }
 
   getUsers() {
-    const stored = localStorage.getItem(this.usersKey);
+    const stored = localStorage.getItem('safeyou_global_users');
     return stored ? JSON.parse(stored).map((user: any) => ({
       ...user,
       lastSeen: new Date(user.lastSeen),
@@ -66,8 +152,15 @@ class RealTimeService {
   }
 
   clearData() {
-    localStorage.removeItem(this.storageKey);
-    localStorage.removeItem(this.usersKey);
+    localStorage.removeItem('safeyou_global_messages');
+    localStorage.removeItem('safeyou_global_users');
+  }
+
+  // Clean up channel when service is destroyed
+  disconnect() {
+    if (this.channel) {
+      this.channel.unsubscribe();
+    }
   }
 }
 

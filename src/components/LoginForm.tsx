@@ -303,18 +303,13 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, existingUsers, onResetPa
                     variant="ghost"
                     size="sm"
                     className="absolute right-0 top-0 h-full px-3 text-blue-300 hover:text-blue-200"
-                    onClick={() => setShowConfirmNewPassword(!showConfirmPassword)}
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   >
                     {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </Button>
                 </div>
                 {error && (
                   <p className="text-red-400 text-sm">{error}</p>
-                )}
-                {existingUsers.length > 0 && (
-                  <p className="text-xs text-blue-300/70">
-                    {existingUsers.length} user{existingUsers.length !== 1 ? 's' : ''} registered
-                  </p>
                 )}
                 <Button 
                   type="submit" 
@@ -375,11 +370,6 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, existingUsers, onResetPa
                     Forgot Password?
                   </Button>
                 </div>
-                {existingUsers.length > 0 && (
-                  <div className="text-xs text-blue-300/70">
-                    <p>Existing users: {existingUsers.slice(0, 3).join(', ')}{existingUsers.length > 3 ? '...' : ''}</p>
-                  </div>
-                )}
                 <Button 
                   type="submit" 
                   className="w-full neon-button"
