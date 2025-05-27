@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import LoginForm from '../components/LoginForm';
 import ChatInterface from '../components/ChatInterface';
@@ -185,6 +186,31 @@ const Index = () => {
     return true;
   };
 
+  const handleResetPassword = (username: string, newPassword: string) => {
+    const existingUser = users.find(u => u.username.toLowerCase() === username.toLowerCase());
+    if (!existingUser) {
+      toast({
+        title: "User not found",
+        description: "This username doesn't exist.",
+        variant: "destructive"
+      });
+      return false;
+    }
+
+    // Update user's password
+    const updatedUser = { ...existingUser, password: hashPassword(newPassword) };
+    const updatedUsers = users.map(u => u.id === existingUser.id ? updatedUser : u);
+    setUsers(updatedUsers);
+    realTimeService.broadcastUserUpdate(updatedUsers);
+
+    toast({
+      title: "Password Reset Successful",
+      description: "Your password has been reset. You can now sign in with your new password.",
+    });
+
+    return true;
+  };
+
   const handleLogout = () => {
     if (currentUser) {
       const updatedUsers = users.map(u => 
@@ -310,6 +336,7 @@ const Index = () => {
       <LoginForm 
         onLogin={handleLogin} 
         existingUsers={existingUsers}
+        onResetPassword={handleResetPassword}
       />
     );
   }
