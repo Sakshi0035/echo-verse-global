@@ -33,7 +33,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
       <div className="p-4 border-b border-blue-500/30">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="font-semibold text-lg neon-text">Echo Verse</h2>
+            <h2 className="font-semibold text-lg neon-text">SafeYou Chat</h2>
             <div className="flex items-center gap-2 text-sm text-blue-300/70">
               <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-400 shadow-glow-green' : 'bg-red-500'}`} />
               {isConnected ? 'Connected' : 'Disconnected'}

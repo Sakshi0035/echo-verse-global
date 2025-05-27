@@ -31,7 +31,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, existingUsers }) => {
       <Card className="w-full max-w-md bg-gray-900 border-blue-500/30 neon-border">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold neon-text">
-            Echo Verse Chat
+            SafeYou Chat
           </CardTitle>
           <CardDescription className="text-blue-300/70">
             Join the global chatroom or sign in to your account
