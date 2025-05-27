@@ -1,8 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
 import LoginForm from '../components/LoginForm';
 import ChatInterface from '../components/ChatInterface';
 import { useToast } from '@/hooks/use-toast';
+import { realTimeService } from '../utils/realTimeService';
 
 export interface User {
   id: string;
@@ -39,11 +39,10 @@ const Index = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Check if user is already logged in
+    // Load initial data
     const savedUser = localStorage.getItem('currentUser');
     if (savedUser) {
       const user = JSON.parse(savedUser);
-      // Check if user is timed out
       if (user.timeoutUntil && new Date(user.timeoutUntil) > new Date()) {
         user.isTimedOut = true;
       } else {
@@ -51,45 +50,30 @@ const Index = () => {
         user.timeoutUntil = undefined;
         user.reportedBy = undefined;
       }
-      
       setCurrentUser(user);
-      setUsers(prev => {
-        const existingUserIndex = prev.findIndex(u => u.id === user.id);
-        if (existingUserIndex >= 0) {
-          const updated = [...prev];
-          updated[existingUserIndex] = { ...user, isOnline: true };
-          return updated;
-        }
-        return [...prev, { ...user, isOnline: true }];
-      });
     }
 
-    // Load existing users from localStorage
     const savedUsers = localStorage.getItem('existingUsers');
     if (savedUsers) {
       setExistingUsers(JSON.parse(savedUsers));
     }
 
-    // Load existing messages
-    const savedMessages = localStorage.getItem('chatMessages');
-    if (savedMessages) {
-      setMessages(JSON.parse(savedMessages).map((msg: any) => ({
-        ...msg,
-        timestamp: new Date(msg.timestamp)
-      })));
-    }
+    // Load real-time data
+    setMessages(realTimeService.getMessages());
+    setUsers(realTimeService.getUsers());
 
-    // Load users from localStorage
-    const savedAllUsers = localStorage.getItem('allUsers');
-    if (savedAllUsers) {
-      setUsers(JSON.parse(savedAllUsers).map((user: any) => ({
-        ...user,
-        lastSeen: new Date(user.lastSeen),
-        timeoutUntil: user.timeoutUntil ? new Date(user.timeoutUntil) : undefined
-      })));
-    }
+    // Subscribe to real-time updates
+    const unsubscribe = realTimeService.subscribe((data) => {
+      if (data.type === 'messages') {
+        setMessages(data.data || []);
+      } else if (data.type === 'users') {
+        setUsers(data.data || []);
+      }
+    });
 
     setIsConnected(true);
+
+    return unsubscribe;
   }, []);
 
   // Save to localStorage whenever data changes
@@ -132,7 +116,6 @@ const Index = () => {
       return false;
     }
 
-    // Find existing user data if signing in
     const existingUserData = users.find(u => u.username.toLowerCase() === username.toLowerCase());
     
     const newUser: User = {
@@ -145,7 +128,6 @@ const Index = () => {
       reportedBy: existingUserData?.reportedBy
     };
 
-    // Check if user is timed out
     if (newUser.timeoutUntil && new Date(newUser.timeoutUntil) > new Date()) {
       const timeLeft = Math.ceil((new Date(newUser.timeoutUntil).getTime() - new Date().getTime()) / (1000 * 60));
       toast({
@@ -161,18 +143,14 @@ const Index = () => {
       setExistingUsers(prev => [...prev, username]);
     }
     
-    setUsers(prev => {
-      const existingUserIndex = prev.findIndex(u => u.username.toLowerCase() === username.toLowerCase());
-      if (existingUserIndex >= 0) {
-        const updated = [...prev];
-        updated[existingUserIndex] = { ...newUser, isOnline: true };
-        return updated;
-      }
-      return [...prev, newUser];
-    });
+    // Update users list and broadcast to all devices
+    const updatedUsers = users.filter(u => u.username.toLowerCase() !== username.toLowerCase());
+    updatedUsers.push(newUser);
+    setUsers(updatedUsers);
+    realTimeService.broadcastUserUpdate(updatedUsers);
     
     toast({
-      title: isSignIn ? "Welcome back!" : "Welcome to the chat!",
+      title: isSignIn ? "Welcome back!" : "Welcome to SafeYou Chat!",
       description: `You've ${isSignIn ? 'signed in' : 'joined'} as ${username}`,
     });
     
@@ -181,9 +159,11 @@ const Index = () => {
 
   const handleLogout = () => {
     if (currentUser) {
-      setUsers(prev => prev.map(u => 
+      const updatedUsers = users.map(u => 
         u.id === currentUser.id ? { ...u, isOnline: false, lastSeen: new Date() } : u
-      ));
+      );
+      setUsers(updatedUsers);
+      realTimeService.broadcastUserUpdate(updatedUsers);
       localStorage.removeItem('currentUser');
       setCurrentUser(null);
       toast({
@@ -196,7 +176,6 @@ const Index = () => {
   const handleSendMessage = (content: string, type: 'text' | 'image' | 'video' = 'text', recipientId?: string, replyToId?: string) => {
     if (!currentUser) return;
 
-    // Check if user is timed out
     if (currentUser.timeoutUntil && new Date(currentUser.timeoutUntil) > new Date()) {
       const timeLeft = Math.ceil((new Date(currentUser.timeoutUntil).getTime() - new Date().getTime()) / (1000 * 60));
       toast({
@@ -222,11 +201,14 @@ const Index = () => {
       replyTo: replyToId
     };
 
-    setMessages(prev => [...prev, newMessage]);
+    // Broadcast message to all devices
+    realTimeService.broadcastMessage(newMessage);
   };
 
   const handleDeleteMessage = (messageId: string) => {
-    setMessages(prev => prev.filter(msg => msg.id !== messageId));
+    const updatedMessages = messages.filter(msg => msg.id !== messageId);
+    setMessages(updatedMessages);
+    localStorage.setItem('safeyou_global_messages', JSON.stringify(updatedMessages));
     toast({
       title: "Message deleted",
       description: "Your message has been deleted.",
@@ -237,22 +219,21 @@ const Index = () => {
     const message = messages.find(m => m.id === messageId);
     if (!message || !currentUser) return;
 
-    // Find the reported user
     const reportedUser = users.find(u => u.id === message.userId);
     if (!reportedUser) return;
 
-    // Set timeout for 30 minutes
     const timeoutUntil = new Date();
     timeoutUntil.setMinutes(timeoutUntil.getMinutes() + 30);
 
-    // Update users list
-    setUsers(prev => prev.map(u => 
+    const updatedUsers = users.map(u => 
       u.id === reportedUser.id 
         ? { ...u, isTimedOut: true, timeoutUntil, reportedBy: currentUser.username }
         : u
-    ));
+    );
+    
+    setUsers(updatedUsers);
+    realTimeService.broadcastUserUpdate(updatedUsers);
 
-    // Update current user if they are the reported user
     if (currentUser.id === reportedUser.id) {
       setCurrentUser(prev => prev ? { ...prev, isTimedOut: true, timeoutUntil, reportedBy: currentUser.username } : null);
     }
@@ -266,7 +247,7 @@ const Index = () => {
   const handleReaction = (messageId: string, emoji: string) => {
     if (!currentUser) return;
 
-    setMessages(prev => prev.map(msg => {
+    const updatedMessages = messages.map(msg => {
       if (msg.id === messageId) {
         const reactions = { ...msg.reactions };
         if (reactions[emoji]) {
@@ -284,7 +265,10 @@ const Index = () => {
         return { ...msg, reactions };
       }
       return msg;
-    }));
+    });
+
+    setMessages(updatedMessages);
+    localStorage.setItem('safeyou_global_messages', JSON.stringify(updatedMessages));
   };
 
   const handleUsernameClick = (userId: string) => {

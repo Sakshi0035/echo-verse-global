@@ -92,9 +92,9 @@ const MessageComponent: React.FC<MessageComponentProps> = ({
   };
 
   return (
-    <div className={`group flex gap-3 ${isOwnMessage ? 'justify-end' : 'justify-start'} hover:bg-blue-500/5 p-2 rounded-lg transition-colors`}>
+    <div className={`group flex gap-3 ${isOwnMessage ? 'justify-end' : 'justify-start'} hover:bg-cyan-500/5 p-2 rounded-lg transition-colors`}>
       {!isOwnMessage && (
-        <div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white text-sm font-medium flex-shrink-0">
+        <div className="w-8 h-8 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-full flex items-center justify-center text-white text-sm font-medium flex-shrink-0 shadow-glow-cyan">
           {message.username[0].toUpperCase()}
         </div>
       )}
@@ -104,8 +104,8 @@ const MessageComponent: React.FC<MessageComponentProps> = ({
         <div 
           className={`text-sm font-medium mb-1 transition-colors ${
             isOwnMessage 
-              ? 'text-blue-300 text-right' 
-              : 'text-blue-300 cursor-pointer hover:text-blue-200'
+              ? 'text-cyan-300 text-right' 
+              : 'text-cyan-300 cursor-pointer hover:text-cyan-200'
           }`}
           onClick={!isOwnMessage ? handleUsernameClick : undefined}
         >
@@ -114,12 +114,12 @@ const MessageComponent: React.FC<MessageComponentProps> = ({
         
         <div className={`rounded-lg p-3 ${
           isOwnMessage 
-            ? 'bg-blue-500 text-white neon-border' 
-            : 'bg-gray-800 border border-gray-700 text-blue-100'
+            ? 'bg-cyan-500 text-white neon-border' 
+            : 'bg-gray-900 border border-gray-700 text-cyan-100'
         }`}>
           {message.replyTo && (
-            <div className="bg-blue-500/20 border-l-4 border-blue-400 p-2 mb-2 rounded text-sm">
-              <span className="text-blue-300">Reply to message</span>
+            <div className="bg-cyan-500/20 border-l-4 border-cyan-400 p-2 mb-2 rounded text-sm">
+              <span className="text-cyan-300">Reply to message</span>
             </div>
           )}
           
@@ -134,7 +134,7 @@ const MessageComponent: React.FC<MessageComponentProps> = ({
             <div className="flex items-center gap-1">
               {/* Read receipts */}
               {isOwnMessage && message.readBy.length > 1 && (
-                <Badge variant="secondary" className="text-xs px-1 py-0 bg-blue-500/20 text-blue-300">
+                <Badge variant="secondary" className="text-xs px-1 py-0 bg-cyan-500/20 text-cyan-300">
                   ✓✓
                 </Badge>
               )}
@@ -145,16 +145,16 @@ const MessageComponent: React.FC<MessageComponentProps> = ({
                   <Button 
                     variant="ghost" 
                     size="sm" 
-                    className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity text-blue-400 hover:text-blue-300 hover:bg-blue-500/20"
+                    className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/20"
                   >
                     <MoreHorizontal className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-gray-800 border-gray-700">
-                  <DropdownMenuItem onClick={onReply} className="text-blue-300 hover:bg-blue-500/20">
+                <DropdownMenuContent align="end" className="bg-gray-900 border-gray-700">
+                  <DropdownMenuItem onClick={onReply} className="text-cyan-300 hover:bg-cyan-500/20">
                     Reply
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setShowReactions(!showReactions)} className="text-blue-300 hover:bg-blue-500/20">
+                  <DropdownMenuItem onClick={() => setShowReactions(!showReactions)} className="text-cyan-300 hover:bg-cyan-500/20">
                     React
                   </DropdownMenuItem>
                   {!isOwnMessage && (
@@ -183,7 +183,7 @@ const MessageComponent: React.FC<MessageComponentProps> = ({
                 key={emoji}
                 variant="ghost"
                 size="sm"
-                className="h-6 px-2 text-xs bg-blue-500/20 text-blue-300 border border-blue-500/50 hover:bg-blue-500/30"
+                className="h-6 px-2 text-xs bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 hover:bg-cyan-500/30"
                 onClick={() => handleReaction(emoji)}
               >
                 {emoji} {users.length}
@@ -194,13 +194,13 @@ const MessageComponent: React.FC<MessageComponentProps> = ({
         
         {/* Quick reactions */}
         {showReactions && (
-          <div className="flex gap-1 mt-2 p-2 bg-gray-800 rounded-lg border border-gray-700">
+          <div className="flex gap-1 mt-2 p-2 bg-gray-900 rounded-lg border border-gray-700">
             {['👍', '❤️', '😂', '😮', '😢', '😡', '🔥', '👏', '🎉', '💯'].map(emoji => (
               <Button
                 key={emoji}
                 variant="ghost"
                 size="sm"
-                className="h-8 w-8 p-0 hover:bg-blue-500/20"
+                className="h-8 w-8 p-0 hover:bg-cyan-500/20"
                 onClick={() => handleReaction(emoji)}
               >
                 {emoji}
@@ -211,7 +211,7 @@ const MessageComponent: React.FC<MessageComponentProps> = ({
       </div>
       
       {isOwnMessage && (
-        <div className="w-8 h-8 bg-gradient-to-br from-green-400 to-blue-500 rounded-full flex items-center justify-center text-white text-sm font-medium flex-shrink-0">
+        <div className="w-8 h-8 bg-gradient-to-br from-green-400 to-cyan-500 rounded-full flex items-center justify-center text-white text-sm font-medium flex-shrink-0 shadow-glow-green">
           {message.username[0].toUpperCase()}
         </div>
       )}
