@@ -7,6 +7,7 @@ import { realTimeService } from '../utils/realTimeService';
 export interface User {
   id: string;
   username: string;
+  password: string; // Store hashed password in real implementation
   isOnline: boolean;
   lastSeen: Date;
   avatar?: string;
@@ -21,6 +22,7 @@ export interface Message {
   username: string;
   content: string;
   type: 'text' | 'image' | 'video';
+  imageUrl?: string; // For combined image + text messages
   timestamp: Date;
   isPrivate: boolean;
   recipientId?: string;
@@ -37,6 +39,15 @@ const Index = () => {
   const [isConnected, setIsConnected] = useState(false);
   const [existingUsers, setExistingUsers] = useState<string[]>([]);
   const { toast } = useToast();
+
+  // Simple password hashing (in production, use proper bcrypt)
+  const hashPassword = (password: string): string => {
+    return btoa(password + 'safeyou_salt'); // Simple base64 encoding for demo
+  };
+
+  const verifyPassword = (password: string, hashedPassword: string): boolean => {
+    return hashPassword(password) === hashedPassword;
+  };
 
   useEffect(() => {
     // Load initial data
@@ -95,59 +106,76 @@ const Index = () => {
     localStorage.setItem('allUsers', JSON.stringify(users));
   }, [users]);
 
-  const handleLogin = (username: string, isSignIn: boolean = false) => {
-    const usernameExists = existingUsers.some(u => u.toLowerCase() === username.toLowerCase());
-    
-    if (isSignIn && !usernameExists) {
-      toast({
-        title: "User not found",
-        description: "This username doesn't exist. Please sign up first.",
-        variant: "destructive"
-      });
-      return false;
-    }
+  const handleLogin = (username: string, password: string, isSignIn: boolean = false) => {
+    if (isSignIn) {
+      // Sign in: verify credentials
+      const existingUser = users.find(u => u.username.toLowerCase() === username.toLowerCase());
+      if (!existingUser) {
+        toast({
+          title: "User not found",
+          description: "This username doesn't exist. Please sign up first.",
+          variant: "destructive"
+        });
+        return false;
+      }
 
-    if (!isSignIn && usernameExists) {
-      toast({
-        title: "Username taken",
-        description: "This username already exists. Please sign in or choose a different username.",
-        variant: "destructive"
-      });
-      return false;
-    }
+      if (!verifyPassword(password, existingUser.password)) {
+        toast({
+          title: "Invalid credentials",
+          description: "Incorrect password. Please try again.",
+          variant: "destructive"
+        });
+        return false;
+      }
 
-    const existingUserData = users.find(u => u.username.toLowerCase() === username.toLowerCase());
-    
-    const newUser: User = {
-      id: isSignIn && existingUserData ? existingUserData.id : Date.now().toString(),
-      username,
-      isOnline: true,
-      lastSeen: new Date(),
-      isTimedOut: existingUserData?.isTimedOut || false,
-      timeoutUntil: existingUserData?.timeoutUntil,
-      reportedBy: existingUserData?.reportedBy
-    };
+      // Check if user is timed out
+      if (existingUser.timeoutUntil && new Date(existingUser.timeoutUntil) > new Date()) {
+        const timeLeft = Math.ceil((new Date(existingUser.timeoutUntil).getTime() - new Date().getTime()) / (1000 * 60));
+        toast({
+          title: "Account temporarily suspended",
+          description: `You have been reported by ${existingUser.reportedBy}. You can't send messages for ${timeLeft} more minutes.`,
+          variant: "destructive"
+        });
+      }
 
-    if (newUser.timeoutUntil && new Date(newUser.timeoutUntil) > new Date()) {
-      const timeLeft = Math.ceil((new Date(newUser.timeoutUntil).getTime() - new Date().getTime()) / (1000 * 60));
-      toast({
-        title: "Account temporarily suspended",
-        description: `You have been reported by ${newUser.reportedBy}. You can't send messages for ${timeLeft} more minutes.`,
-        variant: "destructive"
-      });
-    }
+      const updatedUser = { ...existingUser, isOnline: true, lastSeen: new Date() };
+      setCurrentUser(updatedUser);
 
-    setCurrentUser(newUser);
-    
-    if (!isSignIn) {
+      // Update users list
+      const updatedUsers = users.map(u => u.id === existingUser.id ? updatedUser : u);
+      setUsers(updatedUsers);
+      realTimeService.broadcastUserUpdate(updatedUsers);
+
+    } else {
+      // Sign up: create new user
+      const usernameExists = existingUsers.some(u => u.toLowerCase() === username.toLowerCase());
+      
+      if (usernameExists) {
+        toast({
+          title: "Username taken",
+          description: "This username already exists. Please choose a different username.",
+          variant: "destructive"
+        });
+        return false;
+      }
+
+      const newUser: User = {
+        id: Date.now().toString(),
+        username,
+        password: hashPassword(password),
+        isOnline: true,
+        lastSeen: new Date(),
+        isTimedOut: false
+      };
+
+      setCurrentUser(newUser);
       setExistingUsers(prev => [...prev, username]);
+      
+      // Update users list and broadcast to all devices
+      const updatedUsers = [...users, newUser];
+      setUsers(updatedUsers);
+      realTimeService.broadcastUserUpdate(updatedUsers);
     }
-    
-    // Update users list and broadcast to all devices
-    const updatedUsers = users.filter(u => u.username.toLowerCase() !== username.toLowerCase());
-    updatedUsers.push(newUser);
-    setUsers(updatedUsers);
-    realTimeService.broadcastUserUpdate(updatedUsers);
     
     toast({
       title: isSignIn ? "Welcome back!" : "Welcome to SafeYou Chat!",
@@ -173,7 +201,7 @@ const Index = () => {
     }
   };
 
-  const handleSendMessage = (content: string, type: 'text' | 'image' | 'video' = 'text', recipientId?: string, replyToId?: string) => {
+  const handleSendMessage = (content: string, type: 'text' | 'image' | 'video' = 'text', imageUrl?: string, recipientId?: string, replyToId?: string) => {
     if (!currentUser) return;
 
     if (currentUser.timeoutUntil && new Date(currentUser.timeoutUntil) > new Date()) {
@@ -192,6 +220,7 @@ const Index = () => {
       username: currentUser.username,
       content,
       type,
+      imageUrl, // Include image URL for combined messages
       timestamp: new Date(),
       isPrivate: !!recipientId,
       recipientId,

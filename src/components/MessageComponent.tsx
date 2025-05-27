@@ -58,37 +58,49 @@ const MessageComponent: React.FC<MessageComponentProps> = ({
   };
 
   const renderMessageContent = () => {
-    switch (message.type) {
-      case 'image':
-        return (
+    const hasText = message.content && message.content.trim();
+    const hasMedia = message.imageUrl || (message.type === 'image' || message.type === 'video');
+
+    return (
+      <div className="space-y-2">
+        {/* Media content */}
+        {hasMedia && (
           <div className="relative">
-            <img 
-              src={message.content} 
-              alt="Shared image" 
-              className="max-w-xs rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
-            />
+            {message.type === 'image' && (
+              <img 
+                src={message.imageUrl || message.content} 
+                alt="Shared image" 
+                className="max-w-xs rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+              />
+            )}
+            {message.type === 'video' && (
+              <video 
+                controls 
+                className="max-w-xs rounded-lg"
+                preload="metadata"
+              >
+                <source src={message.imageUrl || message.content} type="video/mp4" />
+                Your browser does not support the video tag.
+              </video>
+            )}
           </div>
-        );
-      case 'video':
-        return (
-          <div className="relative">
-            <video 
-              controls 
-              className="max-w-xs rounded-lg"
-              preload="metadata"
-            >
-              <source src={message.content} type="video/mp4" />
-              Your browser does not support the video tag.
-            </video>
-          </div>
-        );
-      default:
-        return (
+        )}
+        
+        {/* Text content */}
+        {hasText && (
           <div className="whitespace-pre-wrap break-words">
             {message.content}
           </div>
-        );
-    }
+        )}
+        
+        {/* Show placeholder if neither text nor media */}
+        {!hasText && !hasMedia && (
+          <div className="text-cyan-300/50 italic">
+            [Media message]
+          </div>
+        )}
+      </div>
+    );
   };
 
   return (

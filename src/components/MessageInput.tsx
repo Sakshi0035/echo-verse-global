@@ -4,10 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Paperclip, Smile, Send } from 'lucide-react';
+import { Paperclip, Smile, Send, X } from 'lucide-react';
 
 interface MessageInputProps {
-  onSendMessage: (content: string, type?: 'text' | 'image' | 'video') => void;
+  onSendMessage: (content: string, type?: 'text' | 'image' | 'video', imageUrl?: string) => void;
   disabled?: boolean;
 }
 
@@ -30,14 +30,17 @@ const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage, disabled = f
     
     if (disabled) return;
     
+    // Send combined message: image(s) + text if both exist
     if (previewFiles.length > 0) {
-      previewFiles.forEach(file => {
-        onSendMessage(file.url, file.type);
+      // For each file, send as combined message with text
+      previewFiles.forEach((file, index) => {
+        const textToSend = index === 0 ? message.trim() : ''; // Only include text with first image
+        onSendMessage(textToSend, file.type, file.url);
       });
       setPreviewFiles([]);
-    }
-    
-    if (message.trim()) {
+      setMessage('');
+    } else if (message.trim()) {
+      // Send text-only message
       onSendMessage(message.trim());
       setMessage('');
     }
@@ -79,32 +82,37 @@ const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage, disabled = f
     <div className="bg-gray-900/95 backdrop-blur border-t border-blue-500/30 p-2 md:p-4 neon-border">
       {/* File Previews */}
       {previewFiles.length > 0 && (
-        <div className="mb-3 flex gap-2 overflow-x-auto">
-          {previewFiles.map((file, index) => (
-            <div key={index} className="relative flex-shrink-0">
-              {file.type === 'image' ? (
-                <img 
-                  src={file.url} 
-                  alt="Preview" 
-                  className="w-16 h-16 md:w-20 md:h-20 object-cover rounded border border-blue-500/50"
-                />
-              ) : (
-                <video 
-                  src={file.url} 
-                  className="w-16 h-16 md:w-20 md:h-20 object-cover rounded border border-blue-500/50"
-                  muted
-                />
-              )}
-              <Button
-                size="sm"
-                variant="destructive"
-                className="absolute -top-2 -right-2 h-5 w-5 md:h-6 md:w-6 rounded-full p-0 text-xs bg-red-500 hover:bg-red-600"
-                onClick={() => removePreviewFile(index)}
-              >
-                ×
-              </Button>
-            </div>
-          ))}
+        <div className="mb-3">
+          <div className="flex gap-2 overflow-x-auto mb-2">
+            {previewFiles.map((file, index) => (
+              <div key={index} className="relative flex-shrink-0">
+                {file.type === 'image' ? (
+                  <img 
+                    src={file.url} 
+                    alt="Preview" 
+                    className="w-16 h-16 md:w-20 md:h-20 object-cover rounded border border-blue-500/50"
+                  />
+                ) : (
+                  <video 
+                    src={file.url} 
+                    className="w-16 h-16 md:w-20 md:h-20 object-cover rounded border border-blue-500/50"
+                    muted
+                  />
+                )}
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  className="absolute -top-2 -right-2 h-5 w-5 md:h-6 md:w-6 rounded-full p-0 text-xs bg-red-500 hover:bg-red-600"
+                  onClick={() => removePreviewFile(index)}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-blue-300/70">
+            {previewFiles.length} file(s) selected. Add text message to send with media.
+          </p>
         </div>
       )}
 
@@ -170,7 +178,7 @@ const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage, disabled = f
         {/* Message Input */}
         <div className="flex-1">
           <Textarea
-            placeholder={disabled ? "You are temporarily suspended from sending messages..." : "Type a message..."}
+            placeholder={disabled ? "You are temporarily suspended from sending messages..." : previewFiles.length > 0 ? "Add text to send with your media..." : "Type a message..."}
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             disabled={disabled}

@@ -4,25 +4,73 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Eye, EyeOff } from 'lucide-react';
 
 interface LoginFormProps {
-  onLogin: (username: string, isSignIn?: boolean) => boolean;
+  onLogin: (username: string, password: string, isSignIn?: boolean) => boolean;
   existingUsers: string[];
 }
 
 const LoginForm: React.FC<LoginFormProps> = ({ onLogin, existingUsers }) => {
   const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('signup');
+  const [error, setError] = useState('');
+
+  const validateForm = (isSignIn: boolean) => {
+    setError('');
+    
+    if (!username.trim()) {
+      setError('Username is required');
+      return false;
+    }
+    
+    if (username.length < 3) {
+      setError('Username must be at least 3 characters long');
+      return false;
+    }
+    
+    if (!password.trim()) {
+      setError('Password is required');
+      return false;
+    }
+    
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters long');
+      return false;
+    }
+    
+    if (!isSignIn) {
+      if (existingUsers.some(u => u.toLowerCase() === username.toLowerCase())) {
+        setError('Username is already taken. Please choose another username.');
+        return false;
+      }
+      
+      if (password !== confirmPassword) {
+        setError('Passwords do not match');
+        return false;
+      }
+    }
+    
+    return true;
+  };
 
   const handleSubmit = async (e: React.FormEvent, isSignIn: boolean = false) => {
     e.preventDefault();
-    if (!username.trim()) return;
+    
+    if (!validateForm(isSignIn)) return;
 
     setIsLoading(true);
-    const success = onLogin(username.trim(), isSignIn);
+    const success = onLogin(username.trim(), password, isSignIn);
     if (!success) {
       setIsLoading(false);
+      if (isSignIn) {
+        setError('Invalid username or password');
+      }
     }
   };
 
@@ -34,7 +82,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, existingUsers }) => {
             SafeYou Chat
           </CardTitle>
           <CardDescription className="text-blue-300/70">
-            Join the global chatroom or sign in to your account
+            Secure global chatroom with username & password protection
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -53,25 +101,66 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, existingUsers }) => {
                 <div>
                   <Input
                     type="text"
-                    placeholder="Choose your username..."
+                    placeholder="Choose your username (min 3 chars)..."
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     className="w-full bg-gray-800 border-blue-500/30 text-blue-100 placeholder-blue-300/50"
                     maxLength={20}
                     required
                   />
-                  {existingUsers.length > 0 && (
-                    <p className="text-xs text-blue-300/70 mt-1">
-                      {existingUsers.length} user{existingUsers.length !== 1 ? 's' : ''} registered
-                    </p>
-                  )}
                 </div>
+                <div className="relative">
+                  <Input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Create password (min 6 chars)..."
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full bg-gray-800 border-blue-500/30 text-blue-100 placeholder-blue-300/50 pr-10"
+                    required
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3 text-blue-300 hover:text-blue-200"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
+                <div className="relative">
+                  <Input
+                    type={showConfirmPassword ? "text" : "password"}
+                    placeholder="Confirm password..."
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="w-full bg-gray-800 border-blue-500/30 text-blue-100 placeholder-blue-300/50 pr-10"
+                    required
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3 text-blue-300 hover:text-blue-200"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  >
+                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
+                {error && (
+                  <p className="text-red-400 text-sm">{error}</p>
+                )}
+                {existingUsers.length > 0 && (
+                  <p className="text-xs text-blue-300/70">
+                    {existingUsers.length} user{existingUsers.length !== 1 ? 's' : ''} registered
+                  </p>
+                )}
                 <Button 
                   type="submit" 
                   className="w-full neon-button"
-                  disabled={isLoading || !username.trim()}
+                  disabled={isLoading || !username.trim() || !password.trim() || !confirmPassword.trim()}
                 >
-                  {isLoading ? 'Creating Account...' : 'Create Account & Join Chat'}
+                  {isLoading ? 'Creating Account...' : 'Create Secure Account'}
                 </Button>
               </form>
             </TabsContent>
@@ -88,18 +177,40 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, existingUsers }) => {
                     maxLength={20}
                     required
                   />
-                  {existingUsers.length > 0 && (
-                    <div className="text-xs text-blue-300/70 mt-1">
-                      <p>Existing users: {existingUsers.slice(0, 3).join(', ')}{existingUsers.length > 3 ? '...' : ''}</p>
-                    </div>
-                  )}
                 </div>
+                <div className="relative">
+                  <Input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Enter your password..."
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full bg-gray-800 border-blue-500/30 text-blue-100 placeholder-blue-300/50 pr-10"
+                    required
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3 text-blue-300 hover:text-blue-200"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
+                {error && (
+                  <p className="text-red-400 text-sm">{error}</p>
+                )}
+                {existingUsers.length > 0 && (
+                  <div className="text-xs text-blue-300/70">
+                    <p>Existing users: {existingUsers.slice(0, 3).join(', ')}{existingUsers.length > 3 ? '...' : ''}</p>
+                  </div>
+                )}
                 <Button 
                   type="submit" 
                   className="w-full neon-button"
-                  disabled={isLoading || !username.trim()}
+                  disabled={isLoading || !username.trim() || !password.trim()}
                 >
-                  {isLoading ? 'Signing In...' : 'Sign In to Chat'}
+                  {isLoading ? 'Signing In...' : 'Sign In Securely'}
                 </Button>
               </form>
             </TabsContent>

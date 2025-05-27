@@ -10,7 +10,7 @@ interface ChatMainProps {
   currentUser: User;
   messages: Message[];
   users: User[];
-  onSendMessage: (content: string, type?: 'text' | 'image' | 'video', recipientId?: string, replyToId?: string) => void;
+  onSendMessage: (content: string, type?: 'text' | 'image' | 'video', imageUrl?: string, recipientId?: string, replyToId?: string) => void;
   onDeleteMessage: (messageId: string) => void;
   onReportMessage: (messageId: string) => void;
   onReaction: (messageId: string, emoji: string) => void;
@@ -158,8 +158,8 @@ const ChatMain: React.FC<ChatMainProps> = ({
 
       {/* Message Input */}
       <MessageInput 
-        onSendMessage={(content, type) => {
-          onSendMessage(content, type, undefined, replyTo?.id);
+        onSendMessage={(content, type, imageUrl) => {
+          onSendMessage(content, type, imageUrl, undefined, replyTo?.id);
           setReplyTo(null);
         }}
         disabled={currentUser.isTimedOut && currentUser.timeoutUntil && new Date(currentUser.timeoutUntil) > new Date()}
