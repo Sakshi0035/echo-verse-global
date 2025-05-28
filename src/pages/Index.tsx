@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import LoginForm from '../components/LoginForm';
 import ChatInterface from '../components/ChatInterface';
@@ -318,7 +319,8 @@ const Index = () => {
   if (!currentUser) {
     return (
       <LoginForm 
-        onLogin={handleLogin} 
+        onLogin={handleLogin}
+        existingUsers={existingUsers}
       />
     );
   }
