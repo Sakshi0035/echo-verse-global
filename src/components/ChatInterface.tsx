@@ -18,6 +18,7 @@ interface ChatInterfaceProps {
   onReportMessage: (messageId: string) => void;
   onReaction: (messageId: string, emoji: string) => void;
   onLogout: () => void;
+  onDeleteAccount: () => void;
   isConnected: boolean;
   onUsernameClick: (userId: string) => string;
 }
@@ -31,6 +32,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   onReportMessage,
   onReaction,
   onLogout,
+  onDeleteAccount,
   isConnected,
   onUsernameClick
 }) => {
@@ -104,6 +106,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           dmUsers={dmUsers}
           onPrivateChat={handlePrivateChat}
           onLogout={onLogout}
+          onDeleteAccount={onDeleteAccount}
           isConnected={isConnected}
         />
       </div>
@@ -117,6 +120,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
             dmUsers={dmUsers}
             onPrivateChat={handlePrivateChat}
             onLogout={onLogout}
+            onDeleteAccount={onDeleteAccount}
             isConnected={isConnected}
           />
         </SheetContent>

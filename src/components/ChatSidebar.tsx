@@ -1,11 +1,19 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { User } from '../pages/Index';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
-import { LogOut } from 'lucide-react';
+import { LogOut, Users, MessageCircle, Trash2 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 interface ChatSidebarProps {
   currentUser: User;
@@ -13,6 +21,7 @@ interface ChatSidebarProps {
   dmUsers: string[];
   onPrivateChat: (userId: string) => void;
   onLogout: () => void;
+  onDeleteAccount: () => void;
   isConnected: boolean;
 }
 
@@ -22,133 +31,148 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
   dmUsers,
   onPrivateChat,
   onLogout,
+  onDeleteAccount,
   isConnected
 }) => {
-  const otherUsers = users.filter(u => u.id !== currentUser.id);
-  const dmUsersList = users.filter(u => dmUsers.includes(u.id));
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
+  const onlineUsers = users.filter(u => u.isOnline && u.id !== currentUser.id);
+  const dmUserObjects = users.filter(u => dmUsers.includes(u.id) && u.id !== currentUser.id);
+
+  const handleDeleteAccount = () => {
+    onDeleteAccount();
+    setShowDeleteDialog(false);
+  };
 
   return (
-    <div className="w-80 bg-gray-900 border-r border-blue-500/30 flex flex-col neon-border">
+    <div className="w-80 bg-black/95 backdrop-blur border-r border-cyan-500/30 flex flex-col h-screen neon-border">
       {/* Header */}
-      <div className="p-4 border-b border-blue-500/30">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="font-semibold text-lg neon-text">SafeYou Chat</h2>
-            <div className="flex items-center gap-2 text-sm text-blue-300/70">
-              <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-400 shadow-glow-green' : 'bg-red-500'}`} />
-              {isConnected ? 'Connected' : 'Disconnected'}
-            </div>
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onLogout}
-            className="text-blue-400 hover:text-blue-300 hover:bg-blue-500/20"
-          >
-            <LogOut className="h-4 w-4" />
-          </Button>
-        </div>
-        <div className="mt-2 text-sm">
-          <span className="font-medium text-blue-300">{currentUser.username}</span>
-          <Badge variant="secondary" className="ml-2 bg-blue-500/20 text-blue-300 border-blue-500/50">You</Badge>
+      <div className="p-4 border-b border-cyan-500/30">
+        <h1 className="text-xl font-bold neon-text mb-2">SafeYou Chat</h1>
+        <div className="flex items-center gap-2">
+          <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-400' : 'bg-red-400'}`}></div>
+          <span className="text-sm text-cyan-300/70">
+            {isConnected ? 'Connected' : 'Disconnected'}
+          </span>
         </div>
       </div>
 
-      <ScrollArea className="flex-1">
-        {/* DM Section */}
-        {dmUsersList.length > 0 && (
-          <div className="p-4">
-            <h3 className="text-sm font-medium text-blue-300/70 mb-3">Direct Messages</h3>
-            <div className="space-y-2">
-              {dmUsersList.map(user => (
-                <Button
-                  key={user.id}
-                  variant="ghost"
-                  className="w-full justify-start p-2 h-auto hover:bg-blue-500/20 text-blue-200"
-                  onClick={() => onPrivateChat(user.id)}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="relative">
-                      <div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white text-sm font-medium shadow-glow-blue">
-                        {user.username[0].toUpperCase()}
-                      </div>
-                      <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-gray-900 ${user.isOnline ? 'bg-green-400 shadow-glow-green' : 'bg-gray-400'}`} />
-                    </div>
-                    <div className="text-left">
-                      <div className="font-medium text-sm text-blue-200">{user.username}</div>
-                      <div className="text-xs text-blue-300/70">
-                        {user.isOnline ? 'Online' : 'Offline'}
-                      </div>
-                    </div>
-                  </div>
-                </Button>
-              ))}
-            </div>
-            <Separator className="mt-4 bg-blue-500/30" />
+      {/* Current User */}
+      <div className="p-4 border-b border-cyan-500/30">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full flex items-center justify-center">
+            <span className="text-black font-semibold text-sm">
+              {currentUser.username.charAt(0).toUpperCase()}
+            </span>
           </div>
-        )}
+          <div>
+            <div className="font-medium text-cyan-100">{currentUser.username}</div>
+            <div className="text-xs text-green-400">Online</div>
+          </div>
+        </div>
+      </div>
 
-        {/* Online Users */}
-        <div className="p-4">
-          <h3 className="text-sm font-medium text-blue-300/70 mb-3">
-            Online Users ({otherUsers.filter(u => u.isOnline).length})
+      {/* Direct Messages */}
+      {dmUserObjects.length > 0 && (
+        <div className="p-4 border-b border-cyan-500/30">
+          <h3 className="text-sm font-semibold text-cyan-300 mb-3 flex items-center gap-2">
+            <MessageCircle className="h-4 w-4" />
+            Direct Messages
           </h3>
           <div className="space-y-2">
-            {otherUsers.filter(u => u.isOnline).map(user => (
-              <Button
+            {dmUserObjects.map(user => (
+              <button
                 key={user.id}
-                variant="ghost"
-                className="w-full justify-start p-2 h-auto hover:bg-blue-500/20 text-blue-200"
                 onClick={() => onPrivateChat(user.id)}
+                className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-cyan-500/20 transition-colors text-left"
               >
-                <div className="flex items-center gap-3">
-                  <div className="relative">
-                    <div className="w-8 h-8 bg-gradient-to-br from-green-400 to-blue-500 rounded-full flex items-center justify-center text-white text-sm font-medium shadow-glow-blue">
-                      {user.username[0].toUpperCase()}
-                    </div>
-                    <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-400 rounded-full border-2 border-gray-900 shadow-glow-green" />
-                  </div>
-                  <span className="font-medium text-sm text-blue-200">{user.username}</span>
+                <div className="w-6 h-6 bg-gradient-to-r from-purple-400 to-pink-500 rounded-full flex items-center justify-center">
+                  <span className="text-white text-xs font-semibold">
+                    {user.username.charAt(0).toUpperCase()}
+                  </span>
                 </div>
-              </Button>
+                <div>
+                  <div className="text-sm text-cyan-100">{user.username}</div>
+                  <div className={`text-xs ${user.isOnline ? 'text-green-400' : 'text-gray-400'}`}>
+                    {user.isOnline ? 'Online' : 'Offline'}
+                  </div>
+                </div>
+              </button>
             ))}
           </div>
         </div>
+      )}
 
-        {/* Offline Users */}
-        {otherUsers.filter(u => !u.isOnline).length > 0 && (
-          <div className="p-4">
-            <h3 className="text-sm font-medium text-blue-300/70 mb-3">
-              Offline Users ({otherUsers.filter(u => !u.isOnline).length})
-            </h3>
-            <div className="space-y-2">
-              {otherUsers.filter(u => !u.isOnline).map(user => (
-                <Button
-                  key={user.id}
-                  variant="ghost"
-                  className="w-full justify-start p-2 h-auto opacity-60 hover:bg-blue-500/20 text-blue-200"
-                  onClick={() => onPrivateChat(user.id)}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="relative">
-                      <div className="w-8 h-8 bg-gradient-to-br from-gray-400 to-gray-500 rounded-full flex items-center justify-center text-white text-sm font-medium">
-                        {user.username[0].toUpperCase()}
-                      </div>
-                      <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-gray-400 rounded-full border-2 border-gray-900" />
-                    </div>
-                    <div className="text-left">
-                      <div className="font-medium text-sm text-blue-200">{user.username}</div>
-                      <div className="text-xs text-blue-300/70">
-                        Last seen {user.lastSeen.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                      </div>
-                    </div>
-                  </div>
-                </Button>
-              ))}
-            </div>
-          </div>
-        )}
-      </ScrollArea>
+      {/* Online Users */}
+      <div className="flex-1 p-4 overflow-y-auto">
+        <h3 className="text-sm font-semibold text-cyan-300 mb-3 flex items-center gap-2">
+          <Users className="h-4 w-4" />
+          Online Users ({onlineUsers.length})
+        </h3>
+        <div className="space-y-2">
+          {onlineUsers.map(user => (
+            <button
+              key={user.id}
+              onClick={() => onPrivateChat(user.id)}
+              className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-cyan-500/20 transition-colors text-left"
+            >
+              <div className="w-6 h-6 bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full flex items-center justify-center">
+                <span className="text-black text-xs font-semibold">
+                  {user.username.charAt(0).toUpperCase()}
+                </span>
+              </div>
+              <div>
+                <div className="text-sm text-cyan-100">{user.username}</div>
+                <div className="text-xs text-green-400">Online</div>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Footer Actions */}
+      <div className="p-4 border-t border-cyan-500/30 space-y-2">
+        <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+          <AlertDialogTrigger asChild>
+            <Button 
+              variant="destructive" 
+              className="w-full bg-red-600 hover:bg-red-700 text-white"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete Account
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent className="bg-gray-900 border-red-500/30">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-red-400">Are you absolutely sure?</AlertDialogTitle>
+              <AlertDialogDescription className="text-gray-300">
+                This action cannot be undone. This will permanently delete your account
+                and remove all your data from our servers. All your messages will be deleted.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="bg-gray-700 text-gray-300 hover:bg-gray-600">
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeleteAccount}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                Yes, delete my account
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+        
+        <Button 
+          onClick={onLogout}
+          variant="outline" 
+          className="w-full border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/20"
+        >
+          <LogOut className="h-4 w-4 mr-2" />
+          Logout
+        </Button>
+      </div>
     </div>
   );
 };

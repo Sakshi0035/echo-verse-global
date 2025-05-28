@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import LoginForm from '../components/LoginForm';
 import ChatInterface from '../components/ChatInterface';
@@ -320,11 +319,40 @@ const Index = () => {
     return userId;
   };
 
+  const handleDeleteAccount = () => {
+    if (!currentUser) return;
+
+    // Remove user from users list
+    const updatedUsers = users.filter(u => u.id !== currentUser.id);
+    setUsers(updatedUsers);
+    realTimeService.broadcastUserUpdate(updatedUsers);
+
+    // Remove all messages from this user
+    const updatedMessages = messages.filter(msg => msg.userId !== currentUser.id);
+    setMessages(updatedMessages);
+    realTimeService.broadcastUpdatedMessages(updatedMessages);
+
+    // Remove from existing users list
+    const updatedExistingUsers = existingUsers.filter(username => 
+      username.toLowerCase() !== currentUser.username.toLowerCase()
+    );
+    setExistingUsers(updatedExistingUsers);
+
+    // Clear current user and localStorage
+    localStorage.removeItem('currentUser');
+    setCurrentUser(null);
+
+    toast({
+      title: "Account deleted",
+      description: "Your account has been permanently deleted.",
+      variant: "destructive"
+    });
+  };
+
   if (!currentUser) {
     return (
       <LoginForm 
         onLogin={handleLogin}
-        existingUsers={existingUsers}
       />
     );
   }
@@ -339,6 +367,7 @@ const Index = () => {
       onReportMessage={handleReportMessage}
       onReaction={handleReaction}
       onLogout={handleLogout}
+      onDeleteAccount={handleDeleteAccount}
       isConnected={isConnected}
       onUsernameClick={handleUsernameClick}
     />
