@@ -133,7 +133,7 @@ const Index = () => {
       if (!verifyPassword(password, existingUser.password)) {
         toast({
           title: "Invalid credentials",
-          description: "Incorrect password. Please try again.",
+          description: "Incorrect password. Click 'Forgot Password?' to reset it.",
           variant: "destructive"
         });
         return false;
@@ -246,9 +246,13 @@ const Index = () => {
   };
 
   const handleDeleteMessage = (messageId: string) => {
+    const message = messages.find(m => m.id === messageId);
+    if (!message || message.userId !== currentUser?.id) return;
+
     const updatedMessages = messages.filter(msg => msg.id !== messageId);
     setMessages(updatedMessages);
-    localStorage.setItem('safeyou_global_messages', JSON.stringify(updatedMessages));
+    realTimeService.broadcastUpdatedMessages(updatedMessages);
+    
     toast({
       title: "Message deleted",
       description: "Your message has been deleted.",
@@ -308,7 +312,7 @@ const Index = () => {
     });
 
     setMessages(updatedMessages);
-    localStorage.setItem('safeyou_global_messages', JSON.stringify(updatedMessages));
+    realTimeService.broadcastUpdatedMessages(updatedMessages);
   };
 
   const handleUsernameClick = (userId: string) => {
@@ -328,8 +332,8 @@ const Index = () => {
   return (
     <ChatInterface
       currentUser={currentUser}
-      users={users}
-      messages={messages}
+      users={Array.isArray(users) ? users : []}
+      messages={Array.isArray(messages) ? messages : []}
       onSendMessage={handleSendMessage}
       onDeleteMessage={handleDeleteMessage}
       onReportMessage={handleReportMessage}

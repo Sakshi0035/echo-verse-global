@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, ArrowLeft } from 'lucide-react';
 
 interface LoginFormProps {
   onLogin: (username: string, password: string, isSignIn?: boolean) => boolean;
@@ -20,6 +20,9 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, existingUsers }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('signup');
   const [error, setError] = useState('');
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
 
   const validateForm = (isSignIn: boolean) => {
     setError('');
@@ -69,10 +72,108 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, existingUsers }) => {
     if (!success) {
       setIsLoading(false);
       if (isSignIn) {
-        setError('Invalid username or password');
+        setError('Invalid username or password. Click "Forgot Password?" if you need to reset it.');
       }
     }
   };
+
+  const handleForgotPassword = () => {
+    if (!username.trim()) {
+      setError('Please enter your username first');
+      return;
+    }
+
+    if (!existingUsers.some(u => u.toLowerCase() === username.toLowerCase())) {
+      setError('Username not found. Please check your username.');
+      return;
+    }
+
+    setShowForgotPassword(true);
+    setError('');
+  };
+
+  const handleResetPassword = () => {
+    if (!newPassword.trim()) {
+      setError('Please enter a new password');
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      setError('Password must be at least 6 characters long');
+      return;
+    }
+
+    // Update the password in localStorage for the existing user
+    const users = JSON.parse(localStorage.getItem('allUsers') || '[]');
+    const updatedUsers = users.map((user: any) => {
+      if (user.username.toLowerCase() === username.toLowerCase()) {
+        return { ...user, password: btoa(newPassword + 'safeyou_salt') };
+      }
+      return user;
+    });
+    
+    localStorage.setItem('allUsers', JSON.stringify(updatedUsers));
+    
+    setShowForgotPassword(false);
+    setActiveTab('signin');
+    setPassword(newPassword);
+    setNewPassword('');
+    setError('');
+    alert('Password reset successfully! You can now sign in with your new password.');
+  };
+
+  if (showForgotPassword) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4" style={{background: 'linear-gradient(135deg, #0f0f0f 0%, #1a1a2e 50%, #16213e 100%)'}}>
+        <Card className="w-full max-w-md bg-gray-900 border-blue-500/30 neon-border">
+          <CardHeader className="text-center">
+            <Button
+              variant="ghost"
+              onClick={() => setShowForgotPassword(false)}
+              className="absolute top-4 left-4 text-blue-300 hover:text-blue-200"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <CardTitle className="text-2xl font-bold neon-text">
+              Reset Password
+            </CardTitle>
+            <CardDescription className="text-blue-300/70">
+              Enter a new password for: {username}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="relative">
+              <Input
+                type={showNewPassword ? "text" : "password"}
+                placeholder="Enter new password (min 6 chars)..."
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="w-full bg-gray-800 border-blue-500/30 text-blue-100 placeholder-blue-300/50 pr-10"
+                required
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="absolute right-0 top-0 h-full px-3 text-blue-300 hover:text-blue-200"
+                onClick={() => setShowNewPassword(!showNewPassword)}
+              >
+                {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </Button>
+            </div>
+            {error && <p className="text-red-400 text-sm">{error}</p>}
+            <Button 
+              onClick={handleResetPassword}
+              className="w-full neon-button"
+              disabled={!newPassword.trim()}
+            >
+              Reset Password
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4" style={{background: 'linear-gradient(135deg, #0f0f0f 0%, #1a1a2e 50%, #16213e 100%)'}}>
@@ -150,11 +251,6 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, existingUsers }) => {
                 {error && (
                   <p className="text-red-400 text-sm">{error}</p>
                 )}
-                {existingUsers.length > 0 && (
-                  <p className="text-xs text-blue-300/70">
-                    {existingUsers.length} user{existingUsers.length !== 1 ? 's' : ''} registered
-                  </p>
-                )}
                 <Button 
                   type="submit" 
                   className="w-full neon-button"
@@ -200,11 +296,16 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, existingUsers }) => {
                 {error && (
                   <p className="text-red-400 text-sm">{error}</p>
                 )}
-                {existingUsers.length > 0 && (
-                  <div className="text-xs text-blue-300/70">
-                    <p>Existing users: {existingUsers.slice(0, 3).join(', ')}{existingUsers.length > 3 ? '...' : ''}</p>
-                  </div>
-                )}
+                <div className="flex justify-end">
+                  <Button
+                    type="button"
+                    variant="link"
+                    className="text-blue-400 hover:text-blue-300 text-sm p-0"
+                    onClick={handleForgotPassword}
+                  >
+                    Forgot Password?
+                  </Button>
+                </div>
                 <Button 
                   type="submit" 
                   className="w-full neon-button"

@@ -7,12 +7,13 @@ import PrivateChat from './PrivateChat';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Menu } from 'lucide-react';
+import { realTimeService } from '../utils/realTimeService';
 
 interface ChatInterfaceProps {
   currentUser: User;
   users: User[];
   messages: Message[];
-  onSendMessage: (content: string, type?: 'text' | 'image' | 'video', recipientId?: string, replyToId?: string) => void;
+  onSendMessage: (content: string, type?: 'text' | 'image' | 'video', imageUrl?: string, recipientId?: string, replyToId?: string) => void;
   onDeleteMessage: (messageId: string) => void;
   onReportMessage: (messageId: string) => void;
   onReaction: (messageId: string, emoji: string) => void;
@@ -37,7 +38,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const [dmUsers, setDmUsers] = useState<string[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Ensure messages is always an array
+  // Ensure messages and users are always arrays
   const safeMessages = Array.isArray(messages) ? messages : [];
   const safeUsers = Array.isArray(users) ? users : [];
 
@@ -59,26 +60,39 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     }
   };
 
+  // Handle private message sending with proper recipient targeting
+  const handlePrivateMessageSend = (content: string, type?: 'text' | 'image' | 'video', imageUrl?: string) => {
+    if (activePrivateChat) {
+      onSendMessage(content, type, imageUrl, activePrivateChat);
+    }
+  };
+
   if (activePrivateChat) {
     const chatPartner = safeUsers.find(u => u.id === activePrivateChat);
     if (!chatPartner) return null;
+
+    // Filter private messages between current user and chat partner only
+    const privateMessages = safeMessages.filter(m => 
+      m.isPrivate && 
+      ((m.userId === currentUser.id && m.recipientId === activePrivateChat) ||
+       (m.userId === activePrivateChat && m.recipientId === currentUser.id))
+    );
 
     return (
       <PrivateChat
         currentUser={currentUser}
         chatPartner={chatPartner}
-        messages={safeMessages.filter(m => 
-          m.isPrivate && 
-          ((m.userId === currentUser.id && m.recipientId === activePrivateChat) ||
-           (m.userId === activePrivateChat && m.recipientId === currentUser.id))
-        )}
-        onSendMessage={onSendMessage}
+        messages={privateMessages}
+        onSendMessage={handlePrivateMessageSend}
         onBack={handleBackToMain}
         onDeleteMessage={onDeleteMessage}
         onReportMessage={onReportMessage}
       />
     );
   }
+
+  // Filter only public messages for the main chat
+  const publicMessages = safeMessages.filter(m => !m.isPrivate);
 
   return (
     <div className="min-h-screen bg-black flex" style={{background: 'linear-gradient(135deg, #000000 0%, #001122 50%, #002244 100%)'}}>
@@ -129,9 +143,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
         <ChatMain
           currentUser={currentUser}
-          messages={safeMessages.filter(m => !m.isPrivate)}
+          messages={publicMessages}
           users={safeUsers}
-          onSendMessage={onSendMessage}
+          onSendMessage={(content, type, imageUrl) => onSendMessage(content, type, imageUrl, undefined)} // No recipient ID for public messages
           onDeleteMessage={onDeleteMessage}
           onReportMessage={onReportMessage}
           onReaction={onReaction}
