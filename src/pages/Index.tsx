@@ -69,16 +69,26 @@ const Index = () => {
       setExistingUsers(JSON.parse(savedUsers));
     }
 
-    // Load real-time data
-    setMessages(realTimeService.getMessages());
-    setUsers(realTimeService.getUsers());
+    // Load real-time data - ensure these return arrays
+    const initialMessages = realTimeService.getMessages();
+    const initialUsers = realTimeService.getUsers();
+    
+    console.log('Initial messages:', initialMessages);
+    console.log('Initial users:', initialUsers);
+    
+    setMessages(Array.isArray(initialMessages) ? initialMessages : []);
+    setUsers(Array.isArray(initialUsers) ? initialUsers : []);
 
     // Subscribe to real-time updates
     const unsubscribe = realTimeService.subscribe((data) => {
+      console.log('Real-time update received:', data);
+      
       if (data.type === 'messages') {
-        setMessages(data.data || []);
+        const newMessages = Array.isArray(data.data) ? data.data : [];
+        setMessages(newMessages);
       } else if (data.type === 'users') {
-        setUsers(data.data || []);
+        const newUsers = Array.isArray(data.data) ? data.data : [];
+        setUsers(newUsers);
       }
     });
 
@@ -309,7 +319,6 @@ const Index = () => {
     return (
       <LoginForm 
         onLogin={handleLogin} 
-        existingUsers={existingUsers}
       />
     );
   }

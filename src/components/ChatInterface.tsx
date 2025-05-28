@@ -37,6 +37,10 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const [dmUsers, setDmUsers] = useState<string[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  // Ensure messages is always an array
+  const safeMessages = Array.isArray(messages) ? messages : [];
+  const safeUsers = Array.isArray(users) ? users : [];
+
   const handlePrivateChat = (userId: string) => {
     setActivePrivateChat(userId);
     if (!dmUsers.includes(userId)) {
@@ -56,14 +60,14 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   };
 
   if (activePrivateChat) {
-    const chatPartner = users.find(u => u.id === activePrivateChat);
+    const chatPartner = safeUsers.find(u => u.id === activePrivateChat);
     if (!chatPartner) return null;
 
     return (
       <PrivateChat
         currentUser={currentUser}
         chatPartner={chatPartner}
-        messages={messages.filter(m => 
+        messages={safeMessages.filter(m => 
           m.isPrivate && 
           ((m.userId === currentUser.id && m.recipientId === activePrivateChat) ||
            (m.userId === activePrivateChat && m.recipientId === currentUser.id))
@@ -82,7 +86,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       <div className="hidden md:block">
         <ChatSidebar
           currentUser={currentUser}
-          users={users}
+          users={safeUsers}
           dmUsers={dmUsers}
           onPrivateChat={handlePrivateChat}
           onLogout={onLogout}
@@ -95,7 +99,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         <SheetContent side="left" className="w-80 p-0 bg-black border-cyan-500/30">
           <ChatSidebar
             currentUser={currentUser}
-            users={users}
+            users={safeUsers}
             dmUsers={dmUsers}
             onPrivateChat={handlePrivateChat}
             onLogout={onLogout}
@@ -118,15 +122,15 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           <div>
             <h1 className="font-semibold neon-text">SafeYou Chat</h1>
             <p className="text-sm text-cyan-300/70">
-              {users.filter(u => u.isOnline).length} users online
+              {safeUsers.filter(u => u.isOnline).length} users online
             </p>
           </div>
         </div>
 
         <ChatMain
           currentUser={currentUser}
-          messages={messages.filter(m => !m.isPrivate)}
-          users={users}
+          messages={safeMessages.filter(m => !m.isPrivate)}
+          users={safeUsers}
           onSendMessage={onSendMessage}
           onDeleteMessage={onDeleteMessage}
           onReportMessage={onReportMessage}

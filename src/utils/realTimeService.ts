@@ -49,20 +49,40 @@ class RealTimeService {
   }
 
   getMessages() {
-    const stored = localStorage.getItem(this.storageKey);
-    return stored ? JSON.parse(stored).map((msg: any) => ({
-      ...msg,
-      timestamp: new Date(msg.timestamp)
-    })) : [];
+    try {
+      const stored = localStorage.getItem(this.storageKey);
+      if (!stored) return [];
+      
+      const parsed = JSON.parse(stored);
+      if (!Array.isArray(parsed)) return [];
+      
+      return parsed.map((msg: any) => ({
+        ...msg,
+        timestamp: new Date(msg.timestamp)
+      }));
+    } catch (error) {
+      console.error('Error getting messages:', error);
+      return [];
+    }
   }
 
   getUsers() {
-    const stored = localStorage.getItem(this.usersKey);
-    return stored ? JSON.parse(stored).map((user: any) => ({
-      ...user,
-      lastSeen: new Date(user.lastSeen),
-      timeoutUntil: user.timeoutUntil ? new Date(user.timeoutUntil) : undefined
-    })) : [];
+    try {
+      const stored = localStorage.getItem(this.usersKey);
+      if (!stored) return [];
+      
+      const parsed = JSON.parse(stored);
+      if (!Array.isArray(parsed)) return [];
+      
+      return parsed.map((user: any) => ({
+        ...user,
+        lastSeen: new Date(user.lastSeen),
+        timeoutUntil: user.timeoutUntil ? new Date(user.timeoutUntil) : undefined
+      }));
+    } catch (error) {
+      console.error('Error getting users:', error);
+      return [];
+    }
   }
 
   clearData() {
