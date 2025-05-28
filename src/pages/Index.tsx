@@ -353,6 +353,7 @@ const Index = () => {
     return (
       <LoginForm 
         onLogin={handleLogin}
+        existingUsers={existingUsers}
       />
     );
   }
