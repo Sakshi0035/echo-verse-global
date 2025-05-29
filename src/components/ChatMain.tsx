@@ -59,11 +59,42 @@ const ChatMain: React.FC<ChatMainProps> = ({
     const groups: { [date: string]: Message[] } = {};
     
     messages.forEach(message => {
-      const dateKey = message.timestamp.toDateString();
+      // Convert timestamp to Date object if it's not already
+      let timestamp: Date;
+      
+      if (typeof message.timestamp === 'string') {
+        timestamp = new Date(message.timestamp);
+      } else if (message.timestamp && typeof message.timestamp === 'object' && message.timestamp._type === 'Date') {
+        // Handle complex timestamp objects from storage
+        if (message.timestamp.value && message.timestamp.value.iso) {
+          timestamp = new Date(message.timestamp.value.iso);
+        } else if (message.timestamp.value && typeof message.timestamp.value === 'number') {
+          timestamp = new Date(message.timestamp.value);
+        } else {
+          timestamp = new Date();
+        }
+      } else if (message.timestamp instanceof Date) {
+        timestamp = message.timestamp;
+      } else {
+        // Fallback to current date if timestamp is invalid
+        console.warn('Invalid timestamp for message:', message);
+        timestamp = new Date();
+      }
+      
+      // Check if the date is valid
+      if (!timestamp || isNaN(timestamp.getTime())) {
+        console.warn('Invalid timestamp for message:', message);
+        timestamp = new Date();
+      }
+      
+      const dateKey = timestamp.toDateString();
       if (!groups[dateKey]) {
         groups[dateKey] = [];
       }
-      groups[dateKey].push(message);
+      groups[dateKey].push({
+        ...message,
+        timestamp // Ensure the timestamp is a proper Date object
+      });
     });
     
     return groups;
