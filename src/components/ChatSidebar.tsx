@@ -45,9 +45,17 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
     setShowDeleteDialog(false);
   };
 
-  const formatLastSeen = (lastSeen: Date) => {
+  const formatLastSeen = (lastSeen: Date | string) => {
+    // Convert to Date object if it's a string
+    const lastSeenDate = typeof lastSeen === 'string' ? new Date(lastSeen) : lastSeen;
+    
+    // Check if the date is valid
+    if (!lastSeenDate || isNaN(lastSeenDate.getTime())) {
+      return 'Unknown';
+    }
+
     const now = new Date();
-    const diff = now.getTime() - lastSeen.getTime();
+    const diff = now.getTime() - lastSeenDate.getTime();
     const minutes = Math.floor(diff / 60000);
     const hours = Math.floor(minutes / 60);
     const days = Math.floor(hours / 24);

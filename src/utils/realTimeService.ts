@@ -153,7 +153,7 @@ class RealTimeService {
       
       return parsed.map((msg: any) => ({
         ...msg,
-        timestamp: new Date(msg.timestamp)
+        timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date()
       }));
     } catch (error) {
       console.error('Error getting messages:', error);
@@ -171,7 +171,7 @@ class RealTimeService {
       
       return parsed.map((user: any) => ({
         ...user,
-        lastSeen: new Date(user.lastSeen),
+        lastSeen: user.lastSeen ? new Date(user.lastSeen) : new Date(),
         timeoutUntil: user.timeoutUntil ? new Date(user.timeoutUntil) : undefined
       }));
     } catch (error) {
