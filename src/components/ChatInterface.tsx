@@ -89,6 +89,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         onBack={handleBackToMain}
         onDeleteMessage={onDeleteMessage}
         onReportMessage={onReportMessage}
+        onReaction={onReaction}
       />
     );
   }
