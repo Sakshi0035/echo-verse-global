@@ -5,6 +5,8 @@ import MessageComponent from './MessageComponent';
 import MessageInput from './MessageInput';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
+import { Wifi, WifiOff, Clock } from 'lucide-react';
+import { realTimeService } from '../utils/realTimeService';
 
 interface ChatMainProps {
   currentUser: User;
@@ -28,13 +30,35 @@ const ChatMain: React.FC<ChatMainProps> = ({
   onUsernameClick
 }) => {
   const [replyTo, setReplyTo] = useState<Message | null>(null);
+  const [isConnected, setIsConnected] = useState(realTimeService.isConnected());
+  const [pendingCount, setPendingCount] = useState(0);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // Auto-scroll to bottom when new messages arrive
     if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+      const element = scrollAreaRef.current;
+      element.scrollTop = element.scrollHeight;
     }
   }, [messages]);
+
+  useEffect(() => {
+    // Monitor connection status
+    const checkConnection = () => {
+      setIsConnected(realTimeService.isConnected());
+      setPendingCount(realTimeService.getPendingCount());
+    };
+
+    const interval = setInterval(checkConnection, 1000);
+    window.addEventListener('online', checkConnection);
+    window.addEventListener('offline', checkConnection);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('online', checkConnection);
+      window.removeEventListener('offline', checkConnection);
+    };
+  }, []);
 
   const formatDateDivider = (date: Date) => {
     const today = new Date();
@@ -59,36 +83,17 @@ const ChatMain: React.FC<ChatMainProps> = ({
     const groups: { [date: string]: Message[] } = {};
     
     messages.forEach(message => {
-      // Convert timestamp to Date object if it's not already
       let timestamp: Date;
       
       if (typeof message.timestamp === 'string') {
         timestamp = new Date(message.timestamp);
-      } else if (message.timestamp && typeof message.timestamp === 'object' && !(message.timestamp instanceof Date)) {
-        // Handle complex timestamp objects from storage
-        const timestampObj = message.timestamp as any;
-        if (timestampObj._type === 'Date') {
-          if (timestampObj.value && timestampObj.value.iso) {
-            timestamp = new Date(timestampObj.value.iso);
-          } else if (timestampObj.value && typeof timestampObj.value === 'number') {
-            timestamp = new Date(timestampObj.value);
-          } else {
-            timestamp = new Date();
-          }
-        } else {
-          timestamp = new Date();
-        }
       } else if (message.timestamp instanceof Date) {
         timestamp = message.timestamp;
       } else {
-        // Fallback to current date if timestamp is invalid
-        console.warn('Invalid timestamp for message:', message);
         timestamp = new Date();
       }
       
-      // Check if the date is valid
       if (!timestamp || isNaN(timestamp.getTime())) {
-        console.warn('Invalid timestamp for message:', message);
         timestamp = new Date();
       }
       
@@ -98,7 +103,7 @@ const ChatMain: React.FC<ChatMainProps> = ({
       }
       groups[dateKey].push({
         ...message,
-        timestamp // Ensure the timestamp is a proper Date object
+        timestamp
       });
     });
     
@@ -106,85 +111,128 @@ const ChatMain: React.FC<ChatMainProps> = ({
   };
 
   const messageGroups = groupMessagesByDate(messages);
-  const typingUsers = users.filter(u => u.id !== currentUser.id && u.isOnline).slice(0, 1);
+  const onlineUsers = users.filter(u => u.id !== currentUser.id && u.isOnline);
+  const typingUsers = onlineUsers.slice(0, 2); // Show max 2 typing indicators
+
+  const handleReply = (message: Message) => {
+    setReplyTo(message);
+  };
 
   return (
-    <div className="flex-1 flex flex-col bg-black/90 h-screen md:h-auto">
-      {/* Header - Hidden on mobile since we have the mobile header in ChatInterface */}
-      <div className="hidden md:block bg-black/95 backdrop-blur border-b border-cyan-500/30 p-4 neon-border">
+    <div className="flex-1 flex flex-col bg-black/90 h-screen md:h-auto backdrop-blur">
+      {/* Enhanced Header with Connection Status */}
+      <div className="hidden md:block bg-black/95 backdrop-blur border-b border-cyan-500/30 p-4 neon-border shadow-glow-cyan">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-semibold neon-text">SafeYou Chat</h1>
-            <p className="text-sm text-cyan-300/70">
-              {users.filter(u => u.isOnline).length} users online
-            </p>
+            <h1 className="text-xl font-bold neon-text">SafeYou Chat</h1>
+            <div className="flex items-center gap-3 text-sm text-cyan-300/70">
+              <span>{onlineUsers.length} users online</span>
+              <div className="flex items-center gap-1">
+                {isConnected ? (
+                  <>
+                    <Wifi className="h-4 w-4 text-cyan-400" />
+                    <span className="text-cyan-400">Connected</span>
+                  </>
+                ) : (
+                  <>
+                    <WifiOff className="h-4 w-4 text-red-400" />
+                    <span className="text-red-400">Offline</span>
+                  </>
+                )}
+              </div>
+              {pendingCount > 0 && (
+                <div className="flex items-center gap-1 text-orange-400">
+                  <Clock className="h-4 w-4" />
+                  <span>{pendingCount} pending</span>
+                </div>
+              )}
+            </div>
           </div>
-          <Badge variant="secondary" className="bg-cyan-500/20 text-cyan-300 border-cyan-500/50 neon-border">
-            Global Room
-          </Badge>
+          <div className="flex gap-2">
+            <Badge variant="secondary" className="bg-cyan-500/20 text-cyan-300 border-cyan-500/50 neon-border shadow-glow-cyan">
+              Global Room
+            </Badge>
+            {!isConnected && (
+              <Badge variant="destructive" className="bg-red-500/20 text-red-300 border-red-500/50">
+                Offline Mode
+              </Badge>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Messages */}
+      {/* Messages with enhanced styling */}
       <ScrollArea className="flex-1 p-2 md:p-4" ref={scrollAreaRef}>
         <div className="space-y-4">
           {Object.entries(messageGroups).length === 0 ? (
-            <div className="text-center text-cyan-300/70 mt-8">
-              <div className="text-4xl mb-2">💬</div>
-              <p className="text-sm md:text-base">Welcome to SafeYou Chat! Start the conversation.</p>
+            <div className="text-center text-cyan-300/70 mt-12">
+              <div className="text-6xl mb-4">💬</div>
+              <h2 className="text-xl font-semibold neon-text mb-2">Welcome to SafeYou Chat!</h2>
+              <p className="text-sm md:text-base">Start the conversation and connect with people globally.</p>
             </div>
           ) : (
-            Object.entries(messageGroups).map(([dateKey, msgs]) => (
-              <div key={dateKey}>
-                {/* Date Divider */}
-                <div className="flex items-center justify-center my-6">
-                  <div className="bg-cyan-500/20 text-cyan-300 text-xs px-3 py-1 rounded-full border border-cyan-500/50">
-                    {formatDateDivider(new Date(dateKey))}
+            Object.entries(messageGroups)
+              .sort(([a], [b]) => new Date(a).getTime() - new Date(b).getTime())
+              .map(([dateKey, msgs]) => (
+                <div key={dateKey}>
+                  {/* Enhanced Date Divider */}
+                  <div className="flex items-center justify-center my-8">
+                    <div className="bg-gradient-to-r from-cyan-500/20 to-cyan-600/20 text-cyan-300 text-sm px-4 py-2 rounded-full border border-cyan-500/50 neon-border shadow-glow-cyan backdrop-blur">
+                      {formatDateDivider(new Date(dateKey))}
+                    </div>
+                  </div>
+                  
+                  {/* Messages for this date */}
+                  <div className="space-y-4">
+                    {msgs
+                      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+                      .map(message => (
+                        <MessageComponent
+                          key={message.id}
+                          message={message}
+                          currentUser={currentUser}
+                          onReply={() => handleReply(message)}
+                          onDelete={onDeleteMessage}
+                          onReport={onReportMessage}
+                          onReaction={onReaction}
+                          onUsernameClick={onUsernameClick}
+                        />
+                      ))}
                   </div>
                 </div>
-                
-                {/* Messages for this date */}
-                {msgs.map(message => (
-                  <MessageComponent
-                    key={message.id}
-                    message={message}
-                    currentUser={currentUser}
-                    onReply={() => setReplyTo(message)}
-                    onDelete={onDeleteMessage}
-                    onReport={onReportMessage}
-                    onReaction={onReaction}
-                    onUsernameClick={onUsernameClick}
-                  />
-                ))}
-              </div>
-            ))
+              ))
           )}
           
-          {/* Typing Indicator */}
+          {/* Enhanced Typing Indicator */}
           {typingUsers.length > 0 && (
-            <div className="flex items-center gap-2 text-sm text-cyan-300/70 pl-4">
+            <div className="flex items-center gap-3 text-sm text-cyan-300/70 pl-4 py-2">
               <div className="flex gap-1">
-                <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" />
-                <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
-                <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+                <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce shadow-glow-cyan" />
+                <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce shadow-glow-cyan" style={{ animationDelay: '0.1s' }} />
+                <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce shadow-glow-cyan" style={{ animationDelay: '0.2s' }} />
               </div>
-              <span>{typingUsers[0].username} is typing...</span>
+              <span className="neon-text">
+                {typingUsers.length === 1 
+                  ? `${typingUsers[0].username} is typing...`
+                  : `${typingUsers[0].username} and ${typingUsers.length - 1} other${typingUsers.length > 2 ? 's' : ''} ${typingUsers.length === 2 ? 'is' : 'are'} typing...`
+                }
+              </span>
             </div>
           )}
         </div>
       </ScrollArea>
 
-      {/* Reply Preview */}
+      {/* Enhanced Reply Preview */}
       {replyTo && (
-        <div className="bg-cyan-500/20 border-l-4 border-cyan-500 p-3 mx-2 md:mx-4 neon-border">
+        <div className="bg-gradient-to-r from-cyan-500/20 to-cyan-600/20 border-l-4 border-cyan-500 p-4 mx-2 md:mx-4 neon-border shadow-glow-cyan backdrop-blur">
           <div className="flex items-center justify-between">
             <div className="text-sm">
-              <span className="font-medium text-cyan-300">Replying to {replyTo.username}</span>
-              <p className="text-cyan-200/70 truncate">{replyTo.content}</p>
+              <span className="font-medium text-cyan-300 neon-text">Replying to {replyTo.username}</span>
+              <p className="text-cyan-200/70 truncate mt-1">{replyTo.content}</p>
             </div>
             <button 
               onClick={() => setReplyTo(null)}
-              className="text-cyan-400 hover:text-cyan-300 text-lg"
+              className="text-cyan-400 hover:text-cyan-300 text-xl font-bold transition-colors duration-300 hover:scale-110"
             >
               ×
             </button>
@@ -192,7 +240,7 @@ const ChatMain: React.FC<ChatMainProps> = ({
         </div>
       )}
 
-      {/* Message Input */}
+      {/* Enhanced Message Input */}
       <MessageInput 
         onSendMessage={(content, type, imageUrl) => {
           onSendMessage(content, type, imageUrl, undefined, replyTo?.id);

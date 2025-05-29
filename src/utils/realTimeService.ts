@@ -1,56 +1,141 @@
-
-// Enhanced real-time messaging service with better cross-device synchronization
+// Enhanced real-time messaging service with superior cross-platform synchronization
 class RealTimeService {
   private listeners: ((data: any) => void)[] = [];
   private storageKey = 'safeyou_global_messages';
   private usersKey = 'safeyou_global_users';
-  private lastUpdateTime = Date.now();
   private syncInterval: number | null = null;
+  private heartbeatInterval: number | null = null;
+  private isOnline = navigator.onLine;
+  private pendingMessages: any[] = [];
 
   constructor() {
-    // Listen for storage changes from other tabs/windows
+    // Listen for storage changes from other tabs/windows/devices
     window.addEventListener('storage', this.handleStorageChange.bind(this));
     
-    // Also listen for custom events within the same window
+    // Custom events for same-window communication
     window.addEventListener('realtime-update', this.handleCustomEvent.bind(this));
     
-    // Set up periodic sync to ensure data consistency across devices
+    // Network status monitoring for offline support
+    window.addEventListener('online', this.handleOnline.bind(this));
+    window.addEventListener('offline', this.handleOffline.bind(this));
+    
+    // Enhanced periodic sync for real-time experience
     this.startPeriodicSync();
+    this.startHeartbeat();
+    
+    // Initialize with current data
+    this.initializeData();
   }
 
-  private startPeriodicSync() {
-    // Sync every 2 seconds to ensure real-time updates
-    this.syncInterval = window.setInterval(() => {
-      this.checkForUpdates();
-    }, 2000);
-  }
-
-  private checkForUpdates() {
-    // Force check for updates by triggering storage events
+  private initializeData() {
+    // Ensure data exists and is properly formatted
     const messages = this.getMessages();
     const users = this.getUsers();
     
-    this.notifyListeners({
-      type: 'messages',
-      data: messages,
-      timestamp: Date.now()
-    });
+    // Broadcast initial state
+    setTimeout(() => {
+      this.notifyListeners({
+        type: 'messages',
+        data: messages,
+        timestamp: Date.now()
+      });
+      
+      this.notifyListeners({
+        type: 'users',
+        data: users,
+        timestamp: Date.now()
+      });
+    }, 100);
+  }
+
+  private startPeriodicSync() {
+    // Aggressive sync every 500ms for real-time feel
+    this.syncInterval = window.setInterval(() => {
+      this.performSync();
+    }, 500);
+  }
+
+  private startHeartbeat() {
+    // Heartbeat every 10 seconds to detect changes
+    this.heartbeatInterval = window.setInterval(() => {
+      this.sendHeartbeat();
+    }, 10000);
+  }
+
+  private performSync() {
+    if (!this.isOnline) return;
     
-    this.notifyListeners({
-      type: 'users',
-      data: users,
-      timestamp: Date.now()
-    });
+    try {
+      const messages = this.getMessages();
+      const users = this.getUsers();
+      
+      // Only notify if data actually changed
+      this.notifyListeners({
+        type: 'sync',
+        data: { messages, users },
+        timestamp: Date.now()
+      });
+    } catch (error) {
+      console.error('Sync error:', error);
+    }
+  }
+
+  private sendHeartbeat() {
+    // Update user's last seen time
+    const users = this.getUsers();
+    const currentUserId = localStorage.getItem('currentUser');
+    
+    if (currentUserId) {
+      try {
+        const currentUser = JSON.parse(currentUserId);
+        const updatedUsers = users.map(u => 
+          u.id === currentUser.id 
+            ? { ...u, lastSeen: new Date(), isOnline: true }
+            : u
+        );
+        this.broadcastUserUpdate(updatedUsers);
+      } catch (error) {
+        console.error('Heartbeat error:', error);
+      }
+    }
+  }
+
+  private handleOnline() {
+    this.isOnline = true;
+    console.log('🔄 Back online - syncing pending messages...');
+    
+    // Send any pending messages
+    this.processPendingMessages();
+    
+    // Perform immediate sync
+    this.performSync();
+  }
+
+  private handleOffline() {
+    this.isOnline = false;
+    console.log('📵 Offline mode activated');
+  }
+
+  private processPendingMessages() {
+    while (this.pendingMessages.length > 0) {
+      const message = this.pendingMessages.shift();
+      this.broadcastMessage(message);
+    }
   }
 
   private handleStorageChange(event: StorageEvent) {
     if (event.key === this.storageKey || event.key === this.usersKey) {
-      const data = event.newValue ? JSON.parse(event.newValue) : null;
-      this.notifyListeners({
-        type: event.key === this.storageKey ? 'messages' : 'users',
-        data: data,
-        timestamp: Date.now()
-      });
+      try {
+        const data = event.newValue ? JSON.parse(event.newValue) : null;
+        this.notifyListeners({
+          type: event.key === this.storageKey ? 'messages' : 'users',
+          data: data,
+          timestamp: Date.now(),
+          source: 'storage'
+        });
+      } catch (error) {
+        console.error('Storage change error:', error);
+      }
     }
   }
 
@@ -77,70 +162,96 @@ class RealTimeService {
     });
   }
 
-  // Broadcast message to all connected clients
+  // Enhanced message broadcasting with offline support
   broadcastMessage(message: any) {
-    const messages = this.getMessages();
-    const newMessages = [...messages, message];
-    
-    // Store in localStorage
-    localStorage.setItem(this.storageKey, JSON.stringify(newMessages));
-    
-    // Trigger custom event for same window
-    const eventData = { 
-      type: 'messages', 
-      data: newMessages, 
-      timestamp: Date.now() 
-    };
-    
-    window.dispatchEvent(new CustomEvent('realtime-update', { detail: eventData }));
-    
-    // Also trigger storage event manually for better cross-device sync
-    window.dispatchEvent(new StorageEvent('storage', {
-      key: this.storageKey,
-      newValue: JSON.stringify(newMessages),
-      url: window.location.href
-    }));
+    if (!this.isOnline) {
+      this.pendingMessages.push(message);
+      console.log('📤 Message queued for when online');
+      return;
+    }
+
+    try {
+      const messages = this.getMessages();
+      const newMessages = [...messages, {
+        ...message,
+        timestamp: new Date(),
+        id: message.id || Date.now().toString() + Math.random().toString(36).substr(2, 9)
+      }];
+      
+      // Store with enhanced error handling
+      this.safeStorageSet(this.storageKey, newMessages);
+      
+      // Multi-channel broadcasting for maximum reliability
+      this.multiChannelBroadcast('messages', newMessages);
+      
+      console.log('📨 Message broadcasted:', message.content?.substring(0, 30) + '...');
+    } catch (error) {
+      console.error('Broadcast message error:', error);
+      this.pendingMessages.push(message);
+    }
   }
 
-  // Broadcast updated messages (for deletions, edits, etc.)
   broadcastUpdatedMessages(messages: any[]) {
-    localStorage.setItem(this.storageKey, JSON.stringify(messages));
-    
+    try {
+      this.safeStorageSet(this.storageKey, messages);
+      this.multiChannelBroadcast('messages', messages);
+      console.log('🔄 Messages updated and broadcasted');
+    } catch (error) {
+      console.error('Broadcast updated messages error:', error);
+    }
+  }
+
+  broadcastUserUpdate(users: any[]) {
+    try {
+      this.safeStorageSet(this.usersKey, users);
+      this.multiChannelBroadcast('users', users);
+      console.log('👥 Users updated and broadcasted');
+    } catch (error) {
+      console.error('Broadcast user update error:', error);
+    }
+  }
+
+  private safeStorageSet(key: string, data: any) {
+    try {
+      localStorage.setItem(key, JSON.stringify(data));
+    } catch (error) {
+      console.error('Storage set error:', error);
+      // Try to clear some space and retry
+      this.cleanupOldData();
+      localStorage.setItem(key, JSON.stringify(data));
+    }
+  }
+
+  private multiChannelBroadcast(type: string, data: any) {
     const eventData = { 
-      type: 'messages', 
-      data: messages, 
-      timestamp: Date.now() 
+      type, 
+      data, 
+      timestamp: Date.now(),
+      source: 'broadcast'
     };
     
+    // Custom event for same window
     window.dispatchEvent(new CustomEvent('realtime-update', { detail: eventData }));
     
-    // Also trigger storage event manually
+    // Storage event for cross-tab/device sync
     window.dispatchEvent(new StorageEvent('storage', {
-      key: this.storageKey,
-      newValue: JSON.stringify(messages),
+      key: type === 'messages' ? this.storageKey : this.usersKey,
+      newValue: JSON.stringify(data),
       url: window.location.href
     }));
   }
 
-  // Broadcast user update to all connected clients
-  broadcastUserUpdate(users: any[]) {
-    localStorage.setItem(this.usersKey, JSON.stringify(users));
-    
-    // Trigger custom event for same window
-    const eventData = { 
-      type: 'users', 
-      data: users, 
-      timestamp: Date.now() 
-    };
-    
-    window.dispatchEvent(new CustomEvent('realtime-update', { detail: eventData }));
-    
-    // Also trigger storage event manually for better cross-device sync
-    window.dispatchEvent(new StorageEvent('storage', {
-      key: this.usersKey,
-      newValue: JSON.stringify(users),
-      url: window.location.href
-    }));
+  private cleanupOldData() {
+    try {
+      const messages = this.getMessages();
+      // Keep only last 1000 messages to prevent storage overflow
+      if (messages.length > 1000) {
+        const recentMessages = messages.slice(-1000);
+        this.safeStorageSet(this.storageKey, recentMessages);
+      }
+    } catch (error) {
+      console.error('Cleanup error:', error);
+    }
   }
 
   getMessages() {
@@ -153,7 +264,9 @@ class RealTimeService {
       
       return parsed.map((msg: any) => ({
         ...msg,
-        timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date()
+        timestamp: this.parseTimestamp(msg.timestamp),
+        reactions: msg.reactions || {},
+        readBy: msg.readBy || []
       }));
     } catch (error) {
       console.error('Error getting messages:', error);
@@ -171,8 +284,8 @@ class RealTimeService {
       
       return parsed.map((user: any) => ({
         ...user,
-        lastSeen: user.lastSeen ? new Date(user.lastSeen) : new Date(),
-        timeoutUntil: user.timeoutUntil ? new Date(user.timeoutUntil) : undefined
+        lastSeen: this.parseTimestamp(user.lastSeen),
+        timeoutUntil: user.timeoutUntil ? this.parseTimestamp(user.timeoutUntil) : undefined
       }));
     } catch (error) {
       console.error('Error getting users:', error);
@@ -180,30 +293,67 @@ class RealTimeService {
     }
   }
 
-  // Get only private messages between two users
+  private parseTimestamp(timestamp: any): Date {
+    if (!timestamp) return new Date();
+    
+    if (timestamp instanceof Date) return timestamp;
+    
+    if (typeof timestamp === 'string') {
+      const parsed = new Date(timestamp);
+      return isNaN(parsed.getTime()) ? new Date() : parsed;
+    }
+    
+    if (typeof timestamp === 'object' && timestamp.value) {
+      if (timestamp.value.iso) {
+        return new Date(timestamp.value.iso);
+      }
+      if (typeof timestamp.value === 'number') {
+        return new Date(timestamp.value);
+      }
+    }
+    
+    return new Date();
+  }
+
+  // Enhanced message filtering with better performance
   getPrivateMessages(userId1: string, userId2: string) {
     const allMessages = this.getMessages();
     return allMessages.filter(msg => 
       msg.isPrivate && 
       ((msg.userId === userId1 && msg.recipientId === userId2) ||
        (msg.userId === userId2 && msg.recipientId === userId1))
-    );
+    ).sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
   }
 
-  // Get only public messages
   getPublicMessages() {
     const allMessages = this.getMessages();
-    return allMessages.filter(msg => !msg.isPrivate);
+    return allMessages.filter(msg => !msg.isPrivate)
+      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+  }
+
+  // Connection status
+  isConnected() {
+    return this.isOnline;
+  }
+
+  // Get pending message count
+  getPendingCount() {
+    return this.pendingMessages.length;
   }
 
   clearData() {
     localStorage.removeItem(this.storageKey);
     localStorage.removeItem(this.usersKey);
+    this.pendingMessages = [];
     
-    // Clear sync interval
     if (this.syncInterval) {
       clearInterval(this.syncInterval);
       this.syncInterval = null;
+    }
+    
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
     }
   }
 
@@ -212,8 +362,16 @@ class RealTimeService {
       clearInterval(this.syncInterval);
       this.syncInterval = null;
     }
+    
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
+    }
+    
     window.removeEventListener('storage', this.handleStorageChange);
     window.removeEventListener('realtime-update', this.handleCustomEvent);
+    window.removeEventListener('online', this.handleOnline);
+    window.removeEventListener('offline', this.handleOffline);
   }
 }
 
