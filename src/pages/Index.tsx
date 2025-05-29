@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import LoginForm from '../components/LoginForm';
 import ChatInterface from '../components/ChatInterface';
@@ -30,7 +29,7 @@ export interface Message {
   reactions: { [emoji: string]: string[] };
   readBy: string[];
   isEdited: boolean;
-  replyTo?: string;
+  replyTo?: string | Message;
 }
 
 const Index = () => {
@@ -49,17 +48,24 @@ const Index = () => {
     return hashPassword(password) === hashedPassword;
   };
 
+  // Check if user is currently timed out
+  const isUserTimedOut = (user: User): boolean => {
+    if (!user.isTimedOut || !user.timeoutUntil) return false;
+    return new Date(user.timeoutUntil) > new Date();
+  };
+
   useEffect(() => {
     // Load initial data
     const savedUser = localStorage.getItem('currentUser');
     if (savedUser) {
       const user = JSON.parse(savedUser);
-      if (user.timeoutUntil && new Date(user.timeoutUntil) > new Date()) {
-        user.isTimedOut = true;
-      } else {
+      // Check if timeout has expired
+      if (user.timeoutUntil && new Date(user.timeoutUntil) <= new Date()) {
         user.isTimedOut = false;
         user.timeoutUntil = undefined;
         user.reportedBy = undefined;
+      } else if (user.timeoutUntil) {
+        user.isTimedOut = true;
       }
       setCurrentUser(user);
     }
@@ -84,6 +90,14 @@ const Index = () => {
       } else if (data.type === 'users') {
         const newUsers = Array.isArray(data.data) ? data.data : [];
         setUsers(newUsers);
+        
+        // Update current user if their data changed (e.g., timeout status)
+        if (currentUser) {
+          const updatedCurrentUser = newUsers.find(u => u.id === currentUser.id);
+          if (updatedCurrentUser) {
+            setCurrentUser(updatedCurrentUser);
+          }
+        }
       }
     });
 
@@ -133,8 +147,8 @@ const Index = () => {
       }
 
       // Check if user is timed out
-      if (existingUser.timeoutUntil && new Date(existingUser.timeoutUntil) > new Date()) {
-        const timeLeft = Math.ceil((new Date(existingUser.timeoutUntil).getTime() - new Date().getTime()) / (1000 * 60));
+      if (isUserTimedOut(existingUser)) {
+        const timeLeft = Math.ceil((new Date(existingUser.timeoutUntil!).getTime() - new Date().getTime()) / (1000 * 60));
         toast({
           title: "Account temporarily suspended",
           description: `You have been reported by ${existingUser.reportedBy}. You can't send messages for ${timeLeft} more minutes.`,
@@ -207,8 +221,9 @@ const Index = () => {
   const handleSendMessage = (content: string, type: 'text' | 'image' | 'video' = 'text', imageUrl?: string, recipientId?: string, replyToId?: string) => {
     if (!currentUser) return;
 
-    if (currentUser.timeoutUntil && new Date(currentUser.timeoutUntil) > new Date()) {
-      const timeLeft = Math.ceil((new Date(currentUser.timeoutUntil).getTime() - new Date().getTime()) / (1000 * 60));
+    // Check if current user is timed out
+    if (isUserTimedOut(currentUser)) {
+      const timeLeft = Math.ceil((new Date(currentUser.timeoutUntil!).getTime() - new Date().getTime()) / (1000 * 60));
       toast({
         title: "Cannot send message",
         description: `You are temporarily suspended for ${timeLeft} more minutes.`,
@@ -258,8 +273,9 @@ const Index = () => {
     const reportedUser = users.find(u => u.id === message.userId);
     if (!reportedUser) return;
 
+    // Set timeout for 40 minutes
     const timeoutUntil = new Date();
-    timeoutUntil.setMinutes(timeoutUntil.getMinutes() + 30);
+    timeoutUntil.setMinutes(timeoutUntil.getMinutes() + 40);
 
     const updatedUsers = users.map(u => 
       u.id === reportedUser.id 
@@ -270,13 +286,14 @@ const Index = () => {
     setUsers(updatedUsers);
     realTimeService.broadcastUserUpdate(updatedUsers);
 
+    // Update current user if they reported themselves (shouldn't happen but safety check)
     if (currentUser.id === reportedUser.id) {
       setCurrentUser(prev => prev ? { ...prev, isTimedOut: true, timeoutUntil, reportedBy: currentUser.username } : null);
     }
 
     toast({
       title: "User reported",
-      description: `${reportedUser.username} has been suspended for 30 minutes.`,
+      description: `${reportedUser.username} has been suspended for 40 minutes and cannot send messages.`,
     });
   };
 

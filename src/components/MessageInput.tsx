@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,9 +8,14 @@ import { Paperclip, Smile, Send, X } from 'lucide-react';
 interface MessageInputProps {
   onSendMessage: (content: string, type?: 'text' | 'image' | 'video', imageUrl?: string) => void;
   disabled?: boolean;
+  disabledReason?: string;
 }
 
-const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage, disabled = false }) => {
+const MessageInput: React.FC<MessageInputProps> = ({ 
+  onSendMessage, 
+  disabled = false,
+  disabledReason 
+}) => {
   const [message, setMessage] = useState('');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [previewFiles, setPreviewFiles] = useState<{ type: 'image' | 'video', url: string, file: File }[]>([]);
@@ -76,6 +80,19 @@ const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage, disabled = f
     if (disabled) return;
     setMessage(prev => prev + emoji);
     setShowEmojiPicker(false);
+  };
+
+  const getPlaceholderText = () => {
+    if (disabled && disabledReason) {
+      return disabledReason;
+    }
+    if (disabled) {
+      return "You are temporarily suspended from sending messages...";
+    }
+    if (previewFiles.length > 0) {
+      return "Add text to send with your media...";
+    }
+    return "Type a message...";
   };
 
   return (
@@ -178,7 +195,7 @@ const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage, disabled = f
         {/* Message Input */}
         <div className="flex-1">
           <Textarea
-            placeholder={disabled ? "You are temporarily suspended from sending messages..." : previewFiles.length > 0 ? "Add text to send with your media..." : "Type a message..."}
+            placeholder={getPlaceholderText()}
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             disabled={disabled}

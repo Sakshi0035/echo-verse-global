@@ -33,6 +33,18 @@ const ChatMain: React.FC<ChatMainProps> = ({
   const [pendingCount, setPendingCount] = useState(0);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
+  // Check if current user is timed out
+  const isCurrentUserTimedOut = () => {
+    if (!currentUser.isTimedOut || !currentUser.timeoutUntil) return false;
+    return new Date(currentUser.timeoutUntil) > new Date();
+  };
+
+  const getTimeoutMessage = () => {
+    if (!isCurrentUserTimedOut()) return '';
+    const timeLeft = Math.ceil((new Date(currentUser.timeoutUntil!).getTime() - new Date().getTime()) / (1000 * 60));
+    return `You are suspended for ${timeLeft} more minutes. Reported by ${currentUser.reportedBy}.`;
+  };
+
   useEffect(() => {
     // Auto-scroll to bottom when new messages arrive
     if (scrollAreaRef.current) {
@@ -161,9 +173,26 @@ const ChatMain: React.FC<ChatMainProps> = ({
                 Offline Mode
               </Badge>
             )}
+            {isCurrentUserTimedOut() && (
+              <Badge variant="destructive" className="bg-red-500/20 text-red-300 border-red-500/50">
+                Suspended
+              </Badge>
+            )}
           </div>
         </div>
       </div>
+
+      {/* Suspension Notice */}
+      {isCurrentUserTimedOut() && (
+        <div className="bg-red-500/20 border border-red-500/50 p-3 m-2 md:m-4 rounded-lg neon-border">
+          <div className="text-red-300 text-sm font-medium">
+            🚫 Account Suspended
+          </div>
+          <div className="text-red-200/70 text-sm mt-1">
+            {getTimeoutMessage()}
+          </div>
+        </div>
+      )}
 
       {/* Messages with enhanced styling */}
       <ScrollArea className="flex-1 p-2 md:p-4" ref={scrollAreaRef}>
@@ -227,7 +256,7 @@ const ChatMain: React.FC<ChatMainProps> = ({
       </ScrollArea>
 
       {/* Enhanced Reply Preview - WhatsApp style */}
-      {replyTo && (
+      {replyTo && !isCurrentUserTimedOut() && (
         <div className="bg-gradient-to-r from-cyan-500/20 to-cyan-600/20 border-l-4 border-cyan-500 p-3 mx-2 md:mx-4 neon-border shadow-glow-cyan backdrop-blur">
           <div className="flex items-center justify-between">
             <div className="flex-1">
@@ -254,7 +283,8 @@ const ChatMain: React.FC<ChatMainProps> = ({
           onSendMessage(content, type, imageUrl, undefined, replyTo?.id);
           setReplyTo(null);
         }}
-        disabled={currentUser.isTimedOut && currentUser.timeoutUntil && new Date(currentUser.timeoutUntil) > new Date()}
+        disabled={isCurrentUserTimedOut()}
+        disabledReason={isCurrentUserTimedOut() ? getTimeoutMessage() : undefined}
       />
     </div>
   );
