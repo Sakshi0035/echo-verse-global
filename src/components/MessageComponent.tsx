@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Message, User } from '../pages/Index';
 import { Button } from '@/components/ui/button';
@@ -79,7 +78,13 @@ const MessageComponent: React.FC<MessageComponentProps> = ({
   };
 
   const renderReplyPreview = () => {
-    if (!message.replyTo || typeof message.replyTo === 'string') return null;
+    if (!message.replyTo) return null;
+    
+    // Check if replyTo is a string (ID) or an object (Message)
+    if (typeof message.replyTo === 'string') return null;
+    
+    // Now TypeScript knows message.replyTo is a Message object
+    const replyToMessage = message.replyTo as Message;
     
     return (
       <div className="bg-cyan-500/10 border-l-4 border-cyan-400 p-3 mb-3 rounded-r">
@@ -87,10 +92,10 @@ const MessageComponent: React.FC<MessageComponentProps> = ({
           <Reply className="h-4 w-4 text-cyan-400 mt-0.5 flex-shrink-0" />
           <div className="flex-1 min-w-0">
             <div className="text-cyan-300 font-medium text-sm mb-1">
-              {message.replyTo.username}
+              {replyToMessage.username}
             </div>
             <div className="text-cyan-200/70 text-sm line-clamp-2 break-words">
-              {message.replyTo.content || '[Media]'}
+              {replyToMessage.content || '[Media]'}
             </div>
           </div>
         </div>
