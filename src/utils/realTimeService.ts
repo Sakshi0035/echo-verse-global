@@ -1,10 +1,11 @@
 
-// Enhanced real-time messaging service using localStorage events with better message segregation
+// Enhanced real-time messaging service with better cross-device synchronization
 class RealTimeService {
   private listeners: ((data: any) => void)[] = [];
   private storageKey = 'safeyou_global_messages';
   private usersKey = 'safeyou_global_users';
   private lastUpdateTime = Date.now();
+  private syncInterval: number | null = null;
 
   constructor() {
     // Listen for storage changes from other tabs/windows
@@ -12,6 +13,34 @@ class RealTimeService {
     
     // Also listen for custom events within the same window
     window.addEventListener('realtime-update', this.handleCustomEvent.bind(this));
+    
+    // Set up periodic sync to ensure data consistency across devices
+    this.startPeriodicSync();
+  }
+
+  private startPeriodicSync() {
+    // Sync every 2 seconds to ensure real-time updates
+    this.syncInterval = window.setInterval(() => {
+      this.checkForUpdates();
+    }, 2000);
+  }
+
+  private checkForUpdates() {
+    // Force check for updates by triggering storage events
+    const messages = this.getMessages();
+    const users = this.getUsers();
+    
+    this.notifyListeners({
+      type: 'messages',
+      data: messages,
+      timestamp: Date.now()
+    });
+    
+    this.notifyListeners({
+      type: 'users',
+      data: users,
+      timestamp: Date.now()
+    });
   }
 
   private handleStorageChange(event: StorageEvent) {
@@ -39,13 +68,13 @@ class RealTimeService {
   }
 
   private notifyListeners(data: any) {
-    // Prevent duplicate notifications
-    if (data.timestamp && data.timestamp <= this.lastUpdateTime) {
-      return;
-    }
-    this.lastUpdateTime = data.timestamp || Date.now();
-    
-    this.listeners.forEach(listener => listener(data));
+    this.listeners.forEach(listener => {
+      try {
+        listener(data);
+      } catch (error) {
+        console.error('Error in real-time listener:', error);
+      }
+    });
   }
 
   // Broadcast message to all connected clients
@@ -64,6 +93,13 @@ class RealTimeService {
     };
     
     window.dispatchEvent(new CustomEvent('realtime-update', { detail: eventData }));
+    
+    // Also trigger storage event manually for better cross-device sync
+    window.dispatchEvent(new StorageEvent('storage', {
+      key: this.storageKey,
+      newValue: JSON.stringify(newMessages),
+      url: window.location.href
+    }));
   }
 
   // Broadcast updated messages (for deletions, edits, etc.)
@@ -77,6 +113,13 @@ class RealTimeService {
     };
     
     window.dispatchEvent(new CustomEvent('realtime-update', { detail: eventData }));
+    
+    // Also trigger storage event manually
+    window.dispatchEvent(new StorageEvent('storage', {
+      key: this.storageKey,
+      newValue: JSON.stringify(messages),
+      url: window.location.href
+    }));
   }
 
   // Broadcast user update to all connected clients
@@ -91,6 +134,13 @@ class RealTimeService {
     };
     
     window.dispatchEvent(new CustomEvent('realtime-update', { detail: eventData }));
+    
+    // Also trigger storage event manually for better cross-device sync
+    window.dispatchEvent(new StorageEvent('storage', {
+      key: this.usersKey,
+      newValue: JSON.stringify(users),
+      url: window.location.href
+    }));
   }
 
   getMessages() {
@@ -149,6 +199,21 @@ class RealTimeService {
   clearData() {
     localStorage.removeItem(this.storageKey);
     localStorage.removeItem(this.usersKey);
+    
+    // Clear sync interval
+    if (this.syncInterval) {
+      clearInterval(this.syncInterval);
+      this.syncInterval = null;
+    }
+  }
+
+  destroy() {
+    if (this.syncInterval) {
+      clearInterval(this.syncInterval);
+      this.syncInterval = null;
+    }
+    window.removeEventListener('storage', this.handleStorageChange);
+    window.removeEventListener('realtime-update', this.handleCustomEvent);
   }
 }
 

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import LoginForm from '../components/LoginForm';
 import ChatInterface from '../components/ChatInterface';
@@ -37,7 +38,6 @@ const Index = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isConnected, setIsConnected] = useState(false);
-  const [existingUsers, setExistingUsers] = useState<string[]>([]);
   const { toast } = useToast();
 
   // Simple password hashing (in production, use proper bcrypt)
@@ -62,11 +62,6 @@ const Index = () => {
         user.reportedBy = undefined;
       }
       setCurrentUser(user);
-    }
-
-    const savedUsers = localStorage.getItem('existingUsers');
-    if (savedUsers) {
-      setExistingUsers(JSON.parse(savedUsers));
     }
 
     // Load real-time data - ensure these return arrays
@@ -94,7 +89,10 @@ const Index = () => {
 
     setIsConnected(true);
 
-    return unsubscribe;
+    return () => {
+      unsubscribe();
+      realTimeService.destroy();
+    };
   }, []);
 
   // Save to localStorage whenever data changes
@@ -103,10 +101,6 @@ const Index = () => {
       localStorage.setItem('currentUser', JSON.stringify(currentUser));
     }
   }, [currentUser]);
-
-  useEffect(() => {
-    localStorage.setItem('existingUsers', JSON.stringify(existingUsers));
-  }, [existingUsers]);
 
   useEffect(() => {
     localStorage.setItem('chatMessages', JSON.stringify(messages));
@@ -158,7 +152,7 @@ const Index = () => {
 
     } else {
       // Sign up: create new user
-      const usernameExists = existingUsers.some(u => u.toLowerCase() === username.toLowerCase());
+      const usernameExists = users.some(u => u.username.toLowerCase() === username.toLowerCase());
       
       if (usernameExists) {
         toast({
@@ -179,7 +173,6 @@ const Index = () => {
       };
 
       setCurrentUser(newUser);
-      setExistingUsers(prev => [...prev, username]);
       
       // Update users list and broadcast to all devices
       const updatedUsers = [...users, newUser];
@@ -332,12 +325,6 @@ const Index = () => {
     setMessages(updatedMessages);
     realTimeService.broadcastUpdatedMessages(updatedMessages);
 
-    // Remove from existing users list
-    const updatedExistingUsers = existingUsers.filter(username => 
-      username.toLowerCase() !== currentUser.username.toLowerCase()
-    );
-    setExistingUsers(updatedExistingUsers);
-
     // Clear current user and localStorage
     localStorage.removeItem('currentUser');
     setCurrentUser(null);
@@ -349,11 +336,32 @@ const Index = () => {
     });
   };
 
+  const handleResetPassword = (username: string, newPassword: string) => {
+    const userExists = users.find(u => u.username.toLowerCase() === username.toLowerCase());
+    
+    if (!userExists) {
+      return false;
+    }
+
+    // Update user's password
+    const updatedUsers = users.map(u => 
+      u.username.toLowerCase() === username.toLowerCase() 
+        ? { ...u, password: hashPassword(newPassword) }
+        : u
+    );
+    
+    setUsers(updatedUsers);
+    realTimeService.broadcastUserUpdate(updatedUsers);
+    
+    return true;
+  };
+
   if (!currentUser) {
     return (
       <LoginForm 
         onLogin={handleLogin}
-        existingUsers={existingUsers}
+        users={users}
+        onResetPassword={handleResetPassword}
       />
     );
   }

@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { User } from '../pages/Index';
 import { Button } from '@/components/ui/button';
-import { LogOut, Users, MessageCircle, Trash2 } from 'lucide-react';
+import { LogOut, Users, MessageCircle, Trash2, UserCheck, UserX } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,6 +37,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const onlineUsers = users.filter(u => u.isOnline && u.id !== currentUser.id);
+  const offlineUsers = users.filter(u => !u.isOnline && u.id !== currentUser.id);
   const dmUserObjects = users.filter(u => dmUsers.includes(u.id) && u.id !== currentUser.id);
 
   const handleDeleteAccount = () => {
@@ -44,11 +45,24 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
     setShowDeleteDialog(false);
   };
 
+  const formatLastSeen = (lastSeen: Date) => {
+    const now = new Date();
+    const diff = now.getTime() - lastSeen.getTime();
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+
+    if (minutes < 1) return 'Just now';
+    if (minutes < 60) return `${minutes}m ago`;
+    if (hours < 24) return `${hours}h ago`;
+    return `${days}d ago`;
+  };
+
   return (
-    <div className="w-80 bg-black/95 backdrop-blur border-r border-cyan-500/30 flex flex-col h-screen neon-border">
+    <div className="w-80 bg-black/95 backdrop-blur border-r border-cyan-500/30 flex flex-col h-screen">
       {/* Header */}
       <div className="p-4 border-b border-cyan-500/30">
-        <h1 className="text-xl font-bold neon-text mb-2">SafeYou Chat</h1>
+        <h1 className="text-xl font-bold text-cyan-400 mb-2">SafeYou Chat</h1>
         <div className="flex items-center gap-2">
           <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-400' : 'bg-red-400'}`}></div>
           <span className="text-sm text-cyan-300/70">
@@ -60,7 +74,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
       {/* Current User */}
       <div className="p-4 border-b border-cyan-500/30">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full flex items-center justify-center">
+          <div className="w-8 h-8 bg-gradient-to-r from-cyan-400 to-cyan-500 rounded-full flex items-center justify-center">
             <span className="text-black font-semibold text-sm">
               {currentUser.username.charAt(0).toUpperCase()}
             </span>
@@ -94,7 +108,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                 <div>
                   <div className="text-sm text-cyan-100">{user.username}</div>
                   <div className={`text-xs ${user.isOnline ? 'text-green-400' : 'text-gray-400'}`}>
-                    {user.isOnline ? 'Online' : 'Offline'}
+                    {user.isOnline ? 'Online' : formatLastSeen(user.lastSeen)}
                   </div>
                 </div>
               </button>
@@ -103,31 +117,75 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
         </div>
       )}
 
-      {/* Online Users */}
+      {/* Users List */}
       <div className="flex-1 p-4 overflow-y-auto">
-        <h3 className="text-sm font-semibold text-cyan-300 mb-3 flex items-center gap-2">
-          <Users className="h-4 w-4" />
-          Online Users ({onlineUsers.length})
-        </h3>
-        <div className="space-y-2">
-          {onlineUsers.map(user => (
-            <button
-              key={user.id}
-              onClick={() => onPrivateChat(user.id)}
-              className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-cyan-500/20 transition-colors text-left"
-            >
-              <div className="w-6 h-6 bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full flex items-center justify-center">
-                <span className="text-black text-xs font-semibold">
-                  {user.username.charAt(0).toUpperCase()}
-                </span>
-              </div>
-              <div>
-                <div className="text-sm text-cyan-100">{user.username}</div>
-                <div className="text-xs text-green-400">Online</div>
-              </div>
-            </button>
-          ))}
-        </div>
+        {/* Online Users */}
+        {onlineUsers.length > 0 && (
+          <div className="mb-6">
+            <h3 className="text-sm font-semibold text-cyan-300 mb-3 flex items-center gap-2">
+              <UserCheck className="h-4 w-4" />
+              Online Users ({onlineUsers.length})
+            </h3>
+            <div className="space-y-2">
+              {onlineUsers.map(user => (
+                <button
+                  key={user.id}
+                  onClick={() => onPrivateChat(user.id)}
+                  className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-cyan-500/20 transition-colors text-left"
+                >
+                  <div className="w-6 h-6 bg-gradient-to-r from-cyan-400 to-cyan-500 rounded-full flex items-center justify-center">
+                    <span className="text-black text-xs font-semibold">
+                      {user.username.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                  <div>
+                    <div className="text-sm text-cyan-100">{user.username}</div>
+                    <div className="text-xs text-green-400">Online</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Offline Users */}
+        {offlineUsers.length > 0 && (
+          <div>
+            <h3 className="text-sm font-semibold text-cyan-300 mb-3 flex items-center gap-2">
+              <UserX className="h-4 w-4" />
+              Offline Users ({offlineUsers.length})
+            </h3>
+            <div className="space-y-2">
+              {offlineUsers.map(user => (
+                <button
+                  key={user.id}
+                  onClick={() => onPrivateChat(user.id)}
+                  className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-cyan-500/20 transition-colors text-left"
+                >
+                  <div className="w-6 h-6 bg-gradient-to-r from-gray-400 to-gray-500 rounded-full flex items-center justify-center">
+                    <span className="text-white text-xs font-semibold">
+                      {user.username.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                  <div>
+                    <div className="text-sm text-cyan-100">{user.username}</div>
+                    <div className="text-xs text-gray-400">
+                      {formatLastSeen(user.lastSeen)}
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* No Users Message */}
+        {onlineUsers.length === 0 && offlineUsers.length === 0 && (
+          <div className="text-center text-cyan-300/70 mt-8">
+            <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
+            <p className="text-sm">No other users yet</p>
+          </div>
+        )}
       </div>
 
       {/* Footer Actions */}

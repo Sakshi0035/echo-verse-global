@@ -5,13 +5,15 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Eye, EyeOff, ArrowLeft } from 'lucide-react';
+import { User } from '../pages/Index';
 
 interface LoginFormProps {
   onLogin: (username: string, password: string, isSignIn?: boolean) => boolean;
-  existingUsers: string[];
+  users: User[];
+  onResetPassword: (username: string, newPassword: string) => boolean;
 }
 
-const LoginForm: React.FC<LoginFormProps> = ({ onLogin, existingUsers }) => {
+const LoginForm: React.FC<LoginFormProps> = ({ onLogin, users, onResetPassword }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -48,7 +50,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, existingUsers }) => {
     }
     
     if (!isSignIn) {
-      if (existingUsers.some(u => u.toLowerCase() === username.toLowerCase())) {
+      if (users.some(u => u.username.toLowerCase() === username.toLowerCase())) {
         setError('Username is already taken. Please choose another username.');
         return false;
       }
@@ -69,6 +71,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, existingUsers }) => {
 
     setIsLoading(true);
     const success = onLogin(username.trim(), password, isSignIn);
+    
     if (!success) {
       setIsLoading(false);
       if (isSignIn) {
@@ -83,7 +86,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, existingUsers }) => {
       return;
     }
 
-    if (!existingUsers.some(u => u.toLowerCase() === username.toLowerCase())) {
+    if (!users.some(u => u.username.toLowerCase() === username.toLowerCase())) {
       setError('Username not found. Please check your username.');
       return;
     }
@@ -103,41 +106,36 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, existingUsers }) => {
       return;
     }
 
-    // Update the password in localStorage for the existing user
-    const users = JSON.parse(localStorage.getItem('allUsers') || '[]');
-    const updatedUsers = users.map((user: any) => {
-      if (user.username.toLowerCase() === username.toLowerCase()) {
-        return { ...user, password: btoa(newPassword + 'safeyou_salt') };
-      }
-      return user;
-    });
+    const success = onResetPassword(username, newPassword);
     
-    localStorage.setItem('allUsers', JSON.stringify(updatedUsers));
-    
-    setShowForgotPassword(false);
-    setActiveTab('signin');
-    setPassword(newPassword);
-    setNewPassword('');
-    setError('');
-    alert('Password reset successfully! You can now sign in with your new password.');
+    if (success) {
+      setShowForgotPassword(false);
+      setActiveTab('signin');
+      setPassword(newPassword);
+      setNewPassword('');
+      setError('');
+      alert('Password reset successfully! You can now sign in with your new password.');
+    } else {
+      setError('Failed to reset password. Please try again.');
+    }
   };
 
   if (showForgotPassword) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4" style={{background: 'linear-gradient(135deg, #0f0f0f 0%, #1a1a2e 50%, #16213e 100%)'}}>
-        <Card className="w-full max-w-md bg-gray-900 border-blue-500/30 neon-border">
+        <Card className="w-full max-w-md bg-gray-900 border-cyan-500/30">
           <CardHeader className="text-center">
             <Button
               variant="ghost"
               onClick={() => setShowForgotPassword(false)}
-              className="absolute top-4 left-4 text-blue-300 hover:text-blue-200"
+              className="absolute top-4 left-4 text-cyan-300 hover:text-cyan-200"
             >
               <ArrowLeft className="h-4 w-4" />
             </Button>
-            <CardTitle className="text-2xl font-bold neon-text">
+            <CardTitle className="text-2xl font-bold text-cyan-400">
               Reset Password
             </CardTitle>
-            <CardDescription className="text-blue-300/70">
+            <CardDescription className="text-cyan-300/70">
               Enter a new password for: {username}
             </CardDescription>
           </CardHeader>
@@ -148,14 +146,14 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, existingUsers }) => {
                 placeholder="Enter new password (min 6 chars)..."
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full bg-gray-800 border-blue-500/30 text-blue-100 placeholder-blue-300/50 pr-10"
+                className="w-full bg-gray-800 border-cyan-500/30 text-cyan-100 placeholder-cyan-300/50 pr-10"
                 required
               />
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="absolute right-0 top-0 h-full px-3 text-blue-300 hover:text-blue-200"
+                className="absolute right-0 top-0 h-full px-3 text-cyan-300 hover:text-cyan-200"
                 onClick={() => setShowNewPassword(!showNewPassword)}
               >
                 {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -164,7 +162,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, existingUsers }) => {
             {error && <p className="text-red-400 text-sm">{error}</p>}
             <Button 
               onClick={handleResetPassword}
-              className="w-full neon-button"
+              className="w-full bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-600 hover:to-cyan-700 text-black font-medium"
               disabled={!newPassword.trim()}
             >
               Reset Password
@@ -177,22 +175,22 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, existingUsers }) => {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4" style={{background: 'linear-gradient(135deg, #0f0f0f 0%, #1a1a2e 50%, #16213e 100%)'}}>
-      <Card className="w-full max-w-md bg-gray-900 border-blue-500/30 neon-border">
+      <Card className="w-full max-w-md bg-gray-900 border-cyan-500/30">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold neon-text">
+          <CardTitle className="text-2xl font-bold text-cyan-400">
             SafeYou Chat
           </CardTitle>
-          <CardDescription className="text-blue-300/70">
+          <CardDescription className="text-cyan-300/70">
             Secure global chatroom with username & password protection
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-2 bg-gray-800 border border-blue-500/30">
-              <TabsTrigger value="signup" className="data-[state=active]:bg-blue-500 data-[state=active]:text-white">
+            <TabsList className="grid w-full grid-cols-2 bg-gray-800 border border-cyan-500/30">
+              <TabsTrigger value="signup" className="data-[state=active]:bg-cyan-500 data-[state=active]:text-black">
                 Sign Up
               </TabsTrigger>
-              <TabsTrigger value="signin" className="data-[state=active]:bg-blue-500 data-[state=active]:text-white">
+              <TabsTrigger value="signin" className="data-[state=active]:bg-cyan-500 data-[state=active]:text-black">
                 Sign In
               </TabsTrigger>
             </TabsList>
@@ -205,7 +203,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, existingUsers }) => {
                     placeholder="Choose your username (min 3 chars)..."
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    className="w-full bg-gray-800 border-blue-500/30 text-blue-100 placeholder-blue-300/50"
+                    className="w-full bg-gray-800 border-cyan-500/30 text-cyan-100 placeholder-cyan-300/50"
                     maxLength={20}
                     required
                   />
@@ -216,14 +214,14 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, existingUsers }) => {
                     placeholder="Create password (min 6 chars)..."
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full bg-gray-800 border-blue-500/30 text-blue-100 placeholder-blue-300/50 pr-10"
+                    className="w-full bg-gray-800 border-cyan-500/30 text-cyan-100 placeholder-cyan-300/50 pr-10"
                     required
                   />
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="absolute right-0 top-0 h-full px-3 text-blue-300 hover:text-blue-200"
+                    className="absolute right-0 top-0 h-full px-3 text-cyan-300 hover:text-cyan-200"
                     onClick={() => setShowPassword(!showPassword)}
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -235,14 +233,14 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, existingUsers }) => {
                     placeholder="Confirm password..."
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full bg-gray-800 border-blue-500/30 text-blue-100 placeholder-blue-300/50 pr-10"
+                    className="w-full bg-gray-800 border-cyan-500/30 text-cyan-100 placeholder-cyan-300/50 pr-10"
                     required
                   />
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="absolute right-0 top-0 h-full px-3 text-blue-300 hover:text-blue-200"
+                    className="absolute right-0 top-0 h-full px-3 text-cyan-300 hover:text-cyan-200"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   >
                     {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -253,7 +251,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, existingUsers }) => {
                 )}
                 <Button 
                   type="submit" 
-                  className="w-full neon-button"
+                  className="w-full bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-600 hover:to-cyan-700 text-black font-medium"
                   disabled={isLoading || !username.trim() || !password.trim() || !confirmPassword.trim()}
                 >
                   {isLoading ? 'Creating Account...' : 'Create Secure Account'}
@@ -269,7 +267,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, existingUsers }) => {
                     placeholder="Enter your username..."
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    className="w-full bg-gray-800 border-blue-500/30 text-blue-100 placeholder-blue-300/50"
+                    className="w-full bg-gray-800 border-cyan-500/30 text-cyan-100 placeholder-cyan-300/50"
                     maxLength={20}
                     required
                   />
@@ -280,14 +278,14 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, existingUsers }) => {
                     placeholder="Enter your password..."
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full bg-gray-800 border-blue-500/30 text-blue-100 placeholder-blue-300/50 pr-10"
+                    className="w-full bg-gray-800 border-cyan-500/30 text-cyan-100 placeholder-cyan-300/50 pr-10"
                     required
                   />
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="absolute right-0 top-0 h-full px-3 text-blue-300 hover:text-blue-200"
+                    className="absolute right-0 top-0 h-full px-3 text-cyan-300 hover:text-cyan-200"
                     onClick={() => setShowPassword(!showPassword)}
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -300,7 +298,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, existingUsers }) => {
                   <Button
                     type="button"
                     variant="link"
-                    className="text-blue-400 hover:text-blue-300 text-sm p-0"
+                    className="text-cyan-400 hover:text-cyan-300 text-sm p-0"
                     onClick={handleForgotPassword}
                   >
                     Forgot Password?
@@ -308,7 +306,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, existingUsers }) => {
                 </div>
                 <Button 
                   type="submit" 
-                  className="w-full neon-button"
+                  className="w-full bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-600 hover:to-cyan-700 text-black font-medium"
                   disabled={isLoading || !username.trim() || !password.trim()}
                 >
                   {isLoading ? 'Signing In...' : 'Sign In Securely'}
