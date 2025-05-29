@@ -88,7 +88,17 @@
   }
 }
 
-/* Cyan and black theme - removed neon effects */
+/* Enhanced cyan neon theme */
+.neon-border {
+  border: 1px solid rgba(0, 255, 255, 0.8);
+  box-shadow: 0 0 10px rgba(0, 255, 255, 0.3), inset 0 0 10px rgba(0, 255, 255, 0.1);
+}
+
+.neon-text {
+  color: #00ffff;
+  text-shadow: 0 0 10px rgba(0, 255, 255, 0.7), 0 0 20px rgba(0, 255, 255, 0.5), 0 0 40px rgba(0, 255, 255, 0.3);
+}
+
 .cyan-border {
   border: 1px solid rgba(0, 255, 255, 0.6);
 }
@@ -100,16 +110,33 @@
 .cyan-button {
   background: linear-gradient(45deg, #0066cc, #00ccff);
   transition: all 0.3s ease;
+  border: 1px solid rgba(0, 255, 255, 0.5);
+  box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
 }
 
 .cyan-button:hover {
   transform: translateY(-1px);
+  box-shadow: 0 0 25px rgba(0, 255, 255, 0.5);
 }
 
 .shadow-glow-cyan {
-  box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+  box-shadow: 0 0 20px rgba(0, 255, 255, 0.6), 0 0 40px rgba(0, 255, 255, 0.3);
 }
 
 .shadow-glow-green {
   box-shadow: 0 0 20px rgba(34, 197, 94, 0.5);
+}
+
+/* Animate neon effects */
+@keyframes neon-pulse {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(0, 255, 255, 0.3), inset 0 0 10px rgba(0, 255, 255, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(0, 255, 255, 0.6), inset 0 0 15px rgba(0, 255, 255, 0.2);
+  }
+}
+
+.neon-pulse {
+  animation: neon-pulse 2s infinite;
 }

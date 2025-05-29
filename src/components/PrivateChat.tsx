@@ -17,6 +17,7 @@ interface PrivateChatProps {
   onBack: () => void;
   onDeleteMessage: (messageId: string) => void;
   onReportMessage: (messageId: string) => void;
+  onReaction: (messageId: string, emoji: string) => void;
 }
 
 const PrivateChat: React.FC<PrivateChatProps> = ({
@@ -26,7 +27,8 @@ const PrivateChat: React.FC<PrivateChatProps> = ({
   onSendMessage,
   onBack,
   onDeleteMessage,
-  onReportMessage
+  onReportMessage,
+  onReaction
 }) => {
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -120,9 +122,9 @@ const PrivateChat: React.FC<PrivateChatProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 flex flex-col" style={{background: 'linear-gradient(135deg, #0f0f0f 0%, #001122 50%, #002244 100%)'}}>
+    <div className="min-h-screen bg-black flex flex-col" style={{background: 'linear-gradient(135deg, #000000 0%, #001122 50%, #002244 100%)'}}>
       {/* Header */}
-      <div className="bg-gray-900/95 backdrop-blur border-b border-cyan-500/30 p-4">
+      <div className="bg-black/95 backdrop-blur border-b border-cyan-500/30 p-4 neon-border">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Button 
@@ -135,13 +137,13 @@ const PrivateChat: React.FC<PrivateChatProps> = ({
             </Button>
             <div className="flex items-center gap-3">
               <div className="relative">
-                <div className="w-10 h-10 bg-gradient-to-br from-cyan-400 to-cyan-600 rounded-full flex items-center justify-center text-white font-medium">
+                <div className="w-10 h-10 bg-gradient-to-br from-cyan-400 to-cyan-600 rounded-full flex items-center justify-center text-black font-bold shadow-glow-cyan">
                   {chatPartner.username[0].toUpperCase()}
                 </div>
-                <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-gray-900 ${chatPartner.isOnline ? 'bg-green-400' : 'bg-gray-400'}`} />
+                <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-black ${chatPartner.isOnline ? 'bg-cyan-400 shadow-glow-cyan' : 'bg-gray-400'}`} />
               </div>
               <div>
-                <h1 className="font-semibold text-cyan-200">{chatPartner.username}</h1>
+                <h1 className="font-semibold text-cyan-300 neon-text">{chatPartner.username}</h1>
                 <p className="text-sm text-cyan-300/70">
                   {chatPartner.isOnline ? 'Online' : `Last seen ${new Date(chatPartner.lastSeen).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`}
                 </p>
@@ -150,7 +152,7 @@ const PrivateChat: React.FC<PrivateChatProps> = ({
           </div>
           
           <div className="flex items-center gap-2">
-            <Badge variant="outline" className="bg-cyan-500/20 text-cyan-300 border-cyan-500/50">
+            <Badge variant="outline" className="bg-cyan-500/20 text-cyan-300 border-cyan-500/50 neon-border">
               Private Chat
             </Badge>
             
@@ -164,17 +166,17 @@ const PrivateChat: React.FC<PrivateChatProps> = ({
                   <MoreVertical className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="bg-gray-800 border-cyan-500/30">
+              <DropdownMenuContent align="end" className="bg-black border-cyan-500/30 neon-border">
                 <DropdownMenuItem 
                   onClick={handleClearChat}
-                  className="text-cyan-200 hover:bg-cyan-500/20"
+                  className="text-cyan-300 hover:bg-cyan-500/20"
                 >
                   <Trash2 className="h-4 w-4 mr-2" />
                   Clear Chat
                 </DropdownMenuItem>
                 <DropdownMenuItem 
                   onClick={handleDeleteChat}
-                  className="text-cyan-200 hover:bg-cyan-500/20"
+                  className="text-cyan-300 hover:bg-cyan-500/20"
                 >
                   <Trash2 className="h-4 w-4 mr-2" />
                   Delete Chat
@@ -204,7 +206,7 @@ const PrivateChat: React.FC<PrivateChatProps> = ({
               <div key={dateKey}>
                 {/* Date Divider */}
                 <div className="flex items-center justify-center my-6">
-                  <div className="bg-cyan-500/20 text-cyan-300 text-xs px-3 py-1 rounded-full border border-cyan-500/50">
+                  <div className="bg-cyan-500/20 text-cyan-300 text-xs px-3 py-1 rounded-full border border-cyan-500/50 neon-border shadow-glow-cyan">
                     {formatDateDivider(new Date(dateKey))}
                   </div>
                 </div>
@@ -218,6 +220,7 @@ const PrivateChat: React.FC<PrivateChatProps> = ({
                     onReply={() => setReplyTo(message)}
                     onDelete={onDeleteMessage}
                     onReport={onReportMessage}
+                    onReaction={onReaction}
                   />
                 ))}
               </div>
@@ -228,9 +231,9 @@ const PrivateChat: React.FC<PrivateChatProps> = ({
           {chatPartner.isOnline && (
             <div className="flex items-center gap-2 text-sm text-cyan-300/70 pl-4 opacity-50">
               <div className="flex gap-1">
-                <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" />
-                <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
-                <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+                <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce shadow-glow-cyan" />
+                <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce shadow-glow-cyan" style={{ animationDelay: '0.1s' }} />
+                <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce shadow-glow-cyan" style={{ animationDelay: '0.2s' }} />
               </div>
               <span>{chatPartner.username} is typing...</span>
             </div>
@@ -240,7 +243,7 @@ const PrivateChat: React.FC<PrivateChatProps> = ({
 
       {/* Reply Preview */}
       {replyTo && (
-        <div className="bg-cyan-500/20 border-l-4 border-cyan-500 p-3 mx-4">
+        <div className="bg-cyan-500/20 border-l-4 border-cyan-500 p-3 mx-4 neon-border shadow-glow-cyan">
           <div className="flex items-center justify-between">
             <div className="text-sm">
               <span className="font-medium text-cyan-300">Replying to {replyTo.username}</span>
