@@ -64,12 +64,17 @@ const ChatMain: React.FC<ChatMainProps> = ({
       
       if (typeof message.timestamp === 'string') {
         timestamp = new Date(message.timestamp);
-      } else if (message.timestamp && typeof message.timestamp === 'object' && message.timestamp._type === 'Date') {
+      } else if (message.timestamp && typeof message.timestamp === 'object' && !(message.timestamp instanceof Date)) {
         // Handle complex timestamp objects from storage
-        if (message.timestamp.value && message.timestamp.value.iso) {
-          timestamp = new Date(message.timestamp.value.iso);
-        } else if (message.timestamp.value && typeof message.timestamp.value === 'number') {
-          timestamp = new Date(message.timestamp.value);
+        const timestampObj = message.timestamp as any;
+        if (timestampObj._type === 'Date') {
+          if (timestampObj.value && timestampObj.value.iso) {
+            timestamp = new Date(timestampObj.value.iso);
+          } else if (timestampObj.value && typeof timestampObj.value === 'number') {
+            timestamp = new Date(timestampObj.value);
+          } else {
+            timestamp = new Date();
+          }
         } else {
           timestamp = new Date();
         }
