@@ -38,7 +38,12 @@ const PrivateChat: React.FC<PrivateChatProps> = ({
     if (scrollAreaRef.current) {
       scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
     }
-  }, [messages]);
+
+    // Mark private messages as read when viewing this chat
+    if (messages.length > 0) {
+      realTimeService.markConversationAsRead(currentUser.id, chatPartner.id);
+    }
+  }, [messages, currentUser.id, chatPartner.id]);
 
   const formatDateDivider = (date: Date) => {
     const today = new Date();
@@ -241,17 +246,21 @@ const PrivateChat: React.FC<PrivateChatProps> = ({
         </div>
       </ScrollArea>
 
-      {/* Reply Preview */}
+      {/* Reply Preview - WhatsApp style */}
       {replyTo && (
         <div className="bg-cyan-500/20 border-l-4 border-cyan-500 p-3 mx-4 neon-border shadow-glow-cyan">
           <div className="flex items-center justify-between">
-            <div className="text-sm">
-              <span className="font-medium text-cyan-300">Replying to {replyTo.username}</span>
-              <p className="text-cyan-200/70 truncate">{replyTo.content}</p>
+            <div className="flex-1">
+              <div className="text-sm font-medium text-cyan-300 mb-1">
+                Replying to {replyTo.username}
+              </div>
+              <div className="text-cyan-200/70 text-sm truncate">
+                {replyTo.content || '[Media]'}
+              </div>
             </div>
             <button 
               onClick={() => setReplyTo(null)}
-              className="text-cyan-400 hover:text-cyan-300"
+              className="text-cyan-400 hover:text-cyan-300 text-lg font-bold ml-3"
             >
               ×
             </button>

@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { User, Message } from '../pages/Index';
 import MessageComponent from './MessageComponent';
@@ -40,7 +39,12 @@ const ChatMain: React.FC<ChatMainProps> = ({
       const element = scrollAreaRef.current;
       element.scrollTop = element.scrollHeight;
     }
-  }, [messages]);
+
+    // Mark messages as read when they come into view (global chat)
+    if (messages.length > 0) {
+      realTimeService.markConversationAsRead(currentUser.id);
+    }
+  }, [messages, currentUser.id]);
 
   useEffect(() => {
     // Monitor connection status
@@ -222,17 +226,21 @@ const ChatMain: React.FC<ChatMainProps> = ({
         </div>
       </ScrollArea>
 
-      {/* Enhanced Reply Preview */}
+      {/* Enhanced Reply Preview - WhatsApp style */}
       {replyTo && (
-        <div className="bg-gradient-to-r from-cyan-500/20 to-cyan-600/20 border-l-4 border-cyan-500 p-4 mx-2 md:mx-4 neon-border shadow-glow-cyan backdrop-blur">
+        <div className="bg-gradient-to-r from-cyan-500/20 to-cyan-600/20 border-l-4 border-cyan-500 p-3 mx-2 md:mx-4 neon-border shadow-glow-cyan backdrop-blur">
           <div className="flex items-center justify-between">
-            <div className="text-sm">
-              <span className="font-medium text-cyan-300 neon-text">Replying to {replyTo.username}</span>
-              <p className="text-cyan-200/70 truncate mt-1">{replyTo.content}</p>
+            <div className="flex-1">
+              <div className="text-sm font-medium text-cyan-300 neon-text mb-1">
+                Replying to {replyTo.username}
+              </div>
+              <div className="text-cyan-200/70 text-sm truncate">
+                {replyTo.content || '[Media]'}
+              </div>
             </div>
             <button 
               onClick={() => setReplyTo(null)}
-              className="text-cyan-400 hover:text-cyan-300 text-xl font-bold transition-colors duration-300 hover:scale-110"
+              className="text-cyan-400 hover:text-cyan-300 text-xl font-bold transition-colors duration-300 hover:scale-110 ml-3"
             >
               ×
             </button>

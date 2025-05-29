@@ -172,11 +172,15 @@ class RealTimeService {
 
     try {
       const messages = this.getMessages();
-      const newMessages = [...messages, {
+      const newMessage = {
         ...message,
         timestamp: new Date(),
-        id: message.id || Date.now().toString() + Math.random().toString(36).substr(2, 9)
-      }];
+        id: message.id || Date.now().toString() + Math.random().toString(36).substr(2, 9),
+        readBy: [message.userId], // Initialize with sender
+        reactions: message.reactions || {}
+      };
+      
+      const newMessages = [...messages, newMessage];
       
       // Store with enhanced error handling
       this.safeStorageSet(this.storageKey, newMessages);
@@ -372,6 +376,73 @@ class RealTimeService {
     window.removeEventListener('realtime-update', this.handleCustomEvent);
     window.removeEventListener('online', this.handleOnline);
     window.removeEventListener('offline', this.handleOffline);
+  }
+
+  // Mark message as read
+  markMessageAsRead(messageId: string, userId: string) {
+    try {
+      const messages = this.getMessages();
+      const updatedMessages = messages.map(msg => {
+        if (msg.id === messageId) {
+          const readBy = msg.readBy || [];
+          if (!readBy.includes(userId)) {
+            return {
+              ...msg,
+              readBy: [...readBy, userId]
+            };
+          }
+        }
+        return msg;
+      });
+      
+      this.broadcastUpdatedMessages(updatedMessages);
+      console.log('✓ Message marked as read:', messageId);
+    } catch (error) {
+      console.error('Mark as read error:', error);
+    }
+  }
+
+  // Mark all messages in a conversation as read
+  markConversationAsRead(currentUserId: string, partnerId?: string) {
+    try {
+      const messages = this.getMessages();
+      let hasUpdates = false;
+      
+      const updatedMessages = messages.map(msg => {
+        // For private messages, mark only messages from the partner
+        if (partnerId && msg.isPrivate) {
+          if (msg.userId === partnerId && msg.recipientId === currentUserId) {
+            const readBy = msg.readBy || [];
+            if (!readBy.includes(currentUserId)) {
+              hasUpdates = true;
+              return {
+                ...msg,
+                readBy: [...readBy, currentUserId]
+              };
+            }
+          }
+        }
+        // For global messages, mark all unread messages as read
+        else if (!partnerId && !msg.isPrivate) {
+          const readBy = msg.readBy || [];
+          if (!readBy.includes(currentUserId)) {
+            hasUpdates = true;
+            return {
+              ...msg,
+              readBy: [...readBy, currentUserId]
+            };
+          }
+        }
+        return msg;
+      });
+      
+      if (hasUpdates) {
+        this.broadcastUpdatedMessages(updatedMessages);
+        console.log('✓ Conversation marked as read');
+      }
+    } catch (error) {
+      console.error('Mark conversation as read error:', error);
+    }
   }
 }
 
