@@ -65,7 +65,7 @@ const MessageComponent: React.FC<MessageComponentProps> = ({
     if (!isOwnMessage) return null;
     
     const readByCount = message.readBy ? message.readBy.length : 0;
-    const isRead = readByCount > 1; // More than just the sender
+    const isRead = message.isPrivate ? readByCount > 1 : readByCount > 1;
     
     return (
       <div className="flex items-center ml-2">
@@ -79,15 +79,20 @@ const MessageComponent: React.FC<MessageComponentProps> = ({
   };
 
   const renderReplyPreview = () => {
-    if (!message.replyTo) return null;
+    if (!message.replyTo || typeof message.replyTo === 'string') return null;
     
     return (
-      <div className="bg-cyan-500/10 border-l-4 border-cyan-400 p-2 mb-2 rounded-r text-sm">
-        <div className="text-cyan-300 font-medium text-xs mb-1">
-          {message.replyTo.username}
-        </div>
-        <div className="text-cyan-200/70 text-xs line-clamp-2">
-          {message.replyTo.content || '[Media]'}
+      <div className="bg-cyan-500/10 border-l-4 border-cyan-400 p-3 mb-3 rounded-r">
+        <div className="flex items-start gap-2">
+          <Reply className="h-4 w-4 text-cyan-400 mt-0.5 flex-shrink-0" />
+          <div className="flex-1 min-w-0">
+            <div className="text-cyan-300 font-medium text-sm mb-1">
+              {message.replyTo.username}
+            </div>
+            <div className="text-cyan-200/70 text-sm line-clamp-2 break-words">
+              {message.replyTo.content || '[Media]'}
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -163,12 +168,12 @@ const MessageComponent: React.FC<MessageComponentProps> = ({
             ? 'bg-gradient-to-r from-cyan-500 to-cyan-600 text-black neon-border shadow-glow-cyan' 
             : 'bg-black/70 border border-cyan-500/50 text-cyan-100 neon-border backdrop-blur'
         }`}>
-          {/* Reply Preview - WhatsApp style */}
+          {/* Reply Preview */}
           {renderReplyPreview()}
           
           {renderMessageContent()}
           
-          {/* Time and Read Receipt - WhatsApp style */}
+          {/* Time and Read Receipt */}
           <div className="flex items-center justify-end mt-2 gap-1">
             <div className={`text-xs ${isOwnMessage ? 'text-black/70' : 'text-cyan-300/70'}`}>
               {formatTime(message.timestamp)}
