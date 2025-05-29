@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { User, Message } from '../pages/Index';
 import MessageComponent from './MessageComponent';
@@ -62,11 +61,23 @@ const PrivateChat: React.FC<PrivateChatProps> = ({
     const groups: { [date: string]: Message[] } = {};
     
     messages.forEach(message => {
-      const dateKey = message.timestamp.toDateString();
+      // Convert timestamp to Date object if it's not already
+      const timestamp = typeof message.timestamp === 'string' ? new Date(message.timestamp) : message.timestamp;
+      
+      // Check if the date is valid
+      if (!timestamp || isNaN(timestamp.getTime())) {
+        console.warn('Invalid timestamp for message:', message);
+        return;
+      }
+      
+      const dateKey = timestamp.toDateString();
       if (!groups[dateKey]) {
         groups[dateKey] = [];
       }
-      groups[dateKey].push(message);
+      groups[dateKey].push({
+        ...message,
+        timestamp // Ensure the timestamp is a proper Date object
+      });
     });
     
     return groups;
@@ -109,37 +120,37 @@ const PrivateChat: React.FC<PrivateChatProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 flex flex-col" style={{background: 'linear-gradient(135deg, #0f0f0f 0%, #1a1a2e 50%, #16213e 100%)'}}>
+    <div className="min-h-screen bg-gray-900 flex flex-col" style={{background: 'linear-gradient(135deg, #0f0f0f 0%, #001122 50%, #002244 100%)'}}>
       {/* Header */}
-      <div className="bg-gray-900/95 backdrop-blur border-b border-blue-500/30 p-4 neon-border">
+      <div className="bg-gray-900/95 backdrop-blur border-b border-cyan-500/30 p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Button 
               variant="ghost" 
               size="sm" 
               onClick={onBack}
-              className="text-blue-400 hover:text-blue-300 hover:bg-blue-500/20"
+              className="text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/20"
             >
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <div className="flex items-center gap-3">
               <div className="relative">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white font-medium shadow-glow-blue">
+                <div className="w-10 h-10 bg-gradient-to-br from-cyan-400 to-cyan-600 rounded-full flex items-center justify-center text-white font-medium">
                   {chatPartner.username[0].toUpperCase()}
                 </div>
-                <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-gray-900 ${chatPartner.isOnline ? 'bg-green-400 shadow-glow-green' : 'bg-gray-400'}`} />
+                <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-gray-900 ${chatPartner.isOnline ? 'bg-green-400' : 'bg-gray-400'}`} />
               </div>
               <div>
-                <h1 className="font-semibold text-blue-200">{chatPartner.username}</h1>
-                <p className="text-sm text-blue-300/70">
-                  {chatPartner.isOnline ? 'Online' : `Last seen ${chatPartner.lastSeen.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`}
+                <h1 className="font-semibold text-cyan-200">{chatPartner.username}</h1>
+                <p className="text-sm text-cyan-300/70">
+                  {chatPartner.isOnline ? 'Online' : `Last seen ${new Date(chatPartner.lastSeen).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`}
                 </p>
               </div>
             </div>
           </div>
           
           <div className="flex items-center gap-2">
-            <Badge variant="outline" className="bg-blue-500/20 text-blue-300 border-blue-500/50">
+            <Badge variant="outline" className="bg-cyan-500/20 text-cyan-300 border-cyan-500/50">
               Private Chat
             </Badge>
             
@@ -148,22 +159,22 @@ const PrivateChat: React.FC<PrivateChatProps> = ({
                 <Button 
                   variant="ghost" 
                   size="sm"
-                  className="text-blue-400 hover:text-blue-300 hover:bg-blue-500/20"
+                  className="text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/20"
                 >
                   <MoreVertical className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="bg-gray-800 border-blue-500/30">
+              <DropdownMenuContent align="end" className="bg-gray-800 border-cyan-500/30">
                 <DropdownMenuItem 
                   onClick={handleClearChat}
-                  className="text-blue-200 hover:bg-blue-500/20"
+                  className="text-cyan-200 hover:bg-cyan-500/20"
                 >
                   <Trash2 className="h-4 w-4 mr-2" />
                   Clear Chat
                 </DropdownMenuItem>
                 <DropdownMenuItem 
                   onClick={handleDeleteChat}
-                  className="text-blue-200 hover:bg-blue-500/20"
+                  className="text-cyan-200 hover:bg-cyan-500/20"
                 >
                   <Trash2 className="h-4 w-4 mr-2" />
                   Delete Chat
@@ -184,7 +195,7 @@ const PrivateChat: React.FC<PrivateChatProps> = ({
       <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
         <div className="space-y-4">
           {Object.keys(messageGroups).length === 0 ? (
-            <div className="text-center text-blue-300/70 mt-8">
+            <div className="text-center text-cyan-300/70 mt-8">
               <div className="text-4xl mb-2">💬</div>
               <p>Start a conversation with {chatPartner.username}</p>
             </div>
@@ -193,7 +204,7 @@ const PrivateChat: React.FC<PrivateChatProps> = ({
               <div key={dateKey}>
                 {/* Date Divider */}
                 <div className="flex items-center justify-center my-6">
-                  <div className="bg-blue-500/20 text-blue-300 text-xs px-3 py-1 rounded-full border border-blue-500/50">
+                  <div className="bg-cyan-500/20 text-cyan-300 text-xs px-3 py-1 rounded-full border border-cyan-500/50">
                     {formatDateDivider(new Date(dateKey))}
                   </div>
                 </div>
@@ -215,11 +226,11 @@ const PrivateChat: React.FC<PrivateChatProps> = ({
           
           {/* Typing Indicator */}
           {chatPartner.isOnline && (
-            <div className="flex items-center gap-2 text-sm text-blue-300/70 pl-4 opacity-50">
+            <div className="flex items-center gap-2 text-sm text-cyan-300/70 pl-4 opacity-50">
               <div className="flex gap-1">
-                <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" />
-                <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
-                <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+                <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" />
+                <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
+                <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
               </div>
               <span>{chatPartner.username} is typing...</span>
             </div>
@@ -229,15 +240,15 @@ const PrivateChat: React.FC<PrivateChatProps> = ({
 
       {/* Reply Preview */}
       {replyTo && (
-        <div className="bg-blue-500/20 border-l-4 border-blue-500 p-3 mx-4 neon-border">
+        <div className="bg-cyan-500/20 border-l-4 border-cyan-500 p-3 mx-4">
           <div className="flex items-center justify-between">
             <div className="text-sm">
-              <span className="font-medium text-blue-300">Replying to {replyTo.username}</span>
-              <p className="text-blue-200/70 truncate">{replyTo.content}</p>
+              <span className="font-medium text-cyan-300">Replying to {replyTo.username}</span>
+              <p className="text-cyan-200/70 truncate">{replyTo.content}</p>
             </div>
             <button 
               onClick={() => setReplyTo(null)}
-              className="text-blue-400 hover:text-blue-300"
+              className="text-cyan-400 hover:text-cyan-300"
             >
               ×
             </button>
