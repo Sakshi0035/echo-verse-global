@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { User, Message } from '../pages/Index';
 
@@ -59,7 +60,7 @@ export class SupabaseService {
         return { user: null, error: 'Invalid credentials' };
       }
 
-      // Update user as online
+      // Update user as online with current timestamp
       await supabase
         .from('users')
         .update({ 
@@ -140,7 +141,7 @@ export class SupabaseService {
       .eq('id', userId);
   }
 
-  // Message management
+  // Message management with proper reply handling
   async sendMessage(message: Omit<Message, 'id' | 'timestamp'>): Promise<Message | null> {
     try {
       const { data, error } = await supabase
@@ -149,14 +150,14 @@ export class SupabaseService {
           user_id: message.userId,
           username: message.username,
           content: message.content,
-          type: message.type,
+          type: message.type as 'text' | 'image' | 'video',
           image_url: message.imageUrl,
           is_private: message.isPrivate,
           recipient_id: message.recipientId,
-          reply_to_id: typeof message.replyTo === 'string' ? message.replyTo : undefined,
-          reaction: message.reactions,
-          read_by: JSON.stringify(message.readBy),
-          is_edited: message.isEdited
+          reply_to_id: typeof message.replyTo === 'string' ? message.replyTo : (message.replyTo as Message)?.id,
+          reaction: message.reactions || {},
+          read_by: JSON.stringify(message.readBy || []),
+          is_edited: message.isEdited || false
         }])
         .select()
         .single();
@@ -176,8 +177,8 @@ export class SupabaseService {
         timestamp: new Date(data.created_at),
         isPrivate: data.is_private,
         recipientId: data.recipient_id,
-        reactions: typeof data.reaction === 'object' && data.reaction !== null ? data.reaction as { [emoji: string]: string[] } : {},
-        readBy: JSON.parse(data.read_by as string || '[]'),
+        reactions: (typeof data.reaction === 'object' && data.reaction !== null) ? data.reaction as { [emoji: string]: string[] } : {},
+        readBy: JSON.parse((data.read_by as string) || '[]'),
         isEdited: data.is_edited,
         replyTo: data.reply_to_id
       };
@@ -198,7 +199,7 @@ export class SupabaseService {
       return [];
     }
 
-    // Transform the messages and resolve reply relationships
+    // Transform the messages first
     const messages = data.map(msg => ({
       id: msg.id,
       userId: msg.user_id,
@@ -209,8 +210,8 @@ export class SupabaseService {
       timestamp: new Date(msg.created_at),
       isPrivate: msg.is_private,
       recipientId: msg.recipient_id,
-      reactions: typeof msg.reaction === 'object' && msg.reaction !== null ? msg.reaction as { [emoji: string]: string[] } : {},
-      readBy: JSON.parse(msg.read_by as string || '[]'),
+      reactions: (typeof msg.reaction === 'object' && msg.reaction !== null) ? msg.reaction as { [emoji: string]: string[] } : {},
+      readBy: JSON.parse((msg.read_by as string) || '[]'),
       isEdited: msg.is_edited,
       replyTo: msg.reply_to_id
     }));
@@ -251,35 +252,41 @@ export class SupabaseService {
       .eq('id', messageId);
   }
 
-  // Real-time subscriptions
+  // Enhanced real-time subscriptions with better error handling
   subscribe(callback: (data: any) => void) {
     this.listeners.push(callback);
 
-    // Subscribe to messages changes
+    // Subscribe to messages changes with enhanced real-time sync
     this.messagesChannel = supabase
-      .channel('messages-changes')
+      .channel('messages-realtime')
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'messages' },
         async (payload) => {
-          console.log('Messages change:', payload);
+          console.log('Real-time messages change:', payload);
+          // Immediately fetch fresh data to ensure consistency across all sessions
           const messages = await this.getAllMessages();
           callback({ type: 'messages', data: messages });
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Messages channel status:', status);
+      });
 
-    // Subscribe to users changes
+    // Subscribe to users changes with enhanced real-time sync
     this.usersChannel = supabase
-      .channel('users-changes')
+      .channel('users-realtime')
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'users' },
         async (payload) => {
-          console.log('Users change:', payload);
+          console.log('Real-time users change:', payload);
+          // Immediately fetch fresh data to ensure consistency across all sessions
           const users = await this.getAllUsers();
           callback({ type: 'users', data: users });
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Users channel status:', status);
+      });
 
     // Return unsubscribe function
     return () => {
@@ -293,6 +300,17 @@ export class SupabaseService {
         this.usersChannel = null;
       }
     };
+  }
+
+  // Sync user status across sessions
+  async syncUserStatus(userId: string): Promise<void> {
+    await supabase
+      .from('users')
+      .update({ 
+        is_online: true, 
+        last_seen: new Date().toISOString() 
+      })
+      .eq('id', userId);
   }
 
   destroy() {

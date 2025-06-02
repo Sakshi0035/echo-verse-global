@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import LoginForm from '../components/LoginForm';
 import ChatInterface from '../components/ChatInterface';
@@ -8,7 +7,7 @@ import { supabaseService } from '../services/supabaseService';
 export interface User {
   id: string;
   username: string;
-  password: string; // Store hashed password in real implementation
+  password: string;
   isOnline: boolean;
   lastSeen: Date;
   avatar?: string;
@@ -23,7 +22,7 @@ export interface Message {
   username: string;
   content: string;
   type: 'text' | 'image' | 'video';
-  imageUrl?: string; // For combined image + text messages
+  imageUrl?: string;
   timestamp: Date;
   isPrivate: boolean;
   recipientId?: string;
@@ -47,7 +46,7 @@ const Index = () => {
   };
 
   useEffect(() => {
-    // Load initial data from Supabase
+    // Enhanced real-time initialization for synchronization across sessions
     const initializeData = async () => {
       try {
         console.log('Loading initial data from Supabase...');
@@ -63,7 +62,7 @@ const Index = () => {
         setMessages(initialMessages);
         setUsers(initialUsers);
 
-        // Check for saved user in localStorage and verify they still exist
+        // Enhanced user session handling - sync across all sessions
         const savedUser = localStorage.getItem('currentUser');
         if (savedUser) {
           const user = JSON.parse(savedUser);
@@ -82,19 +81,15 @@ const Index = () => {
               existingUser.reportedBy = undefined;
             }
             
-            // Update user as online
-            await supabaseService.updateUser(existingUser.id, {
-              isOnline: true,
-              lastSeen: new Date()
-            });
-            
+            // Sync user status across all sessions
+            await supabaseService.syncUserStatus(existingUser.id);
             setCurrentUser(existingUser);
           } else {
             localStorage.removeItem('currentUser');
           }
         }
 
-        // Subscribe to real-time updates
+        // Enhanced real-time subscription for cross-session sync
         const unsubscribe = supabaseService.subscribe((data) => {
           console.log('Real-time update received:', data);
           
@@ -103,19 +98,19 @@ const Index = () => {
           } else if (data.type === 'users') {
             setUsers(data.data);
             
-            // Update current user if their data changed
+            // Update current user if their data changed across sessions
             if (currentUser) {
               const updatedCurrentUser = data.data.find((u: User) => u.id === currentUser.id);
               if (updatedCurrentUser) {
                 setCurrentUser(updatedCurrentUser);
+                // Update localStorage to maintain sync
+                localStorage.setItem('currentUser', JSON.stringify(updatedCurrentUser));
               }
             }
           }
         });
 
         setIsConnected(true);
-
-        // Return the unsubscribe function
         return unsubscribe;
       } catch (error) {
         console.error('Error initializing data:', error);
@@ -127,7 +122,15 @@ const Index = () => {
     let unsubscribePromise: Promise<(() => void) | undefined>;
     unsubscribePromise = initializeData();
 
+    // Periodic sync to ensure consistency across sessions
+    const syncInterval = setInterval(async () => {
+      if (currentUser) {
+        await supabaseService.syncUserStatus(currentUser.id);
+      }
+    }, 30000); // Sync every 30 seconds
+
     return () => {
+      clearInterval(syncInterval);
       unsubscribePromise.then(unsubscribe => {
         if (unsubscribe) {
           unsubscribe();
@@ -137,7 +140,7 @@ const Index = () => {
     };
   }, []);
 
-  // Save current user to localStorage when it changes
+  // Enhanced localStorage sync for cross-session consistency
   useEffect(() => {
     if (currentUser) {
       localStorage.setItem('currentUser', JSON.stringify(currentUser));
@@ -319,17 +322,13 @@ const Index = () => {
   };
 
   const handleUsernameClick = (userId: string) => {
-    // This will be handled in ChatInterface to open private chat
     return userId;
   };
 
   const handleDeleteAccount = async () => {
     if (!currentUser) return;
 
-    // Delete user and their messages
     await supabaseService.deleteUser(currentUser.id);
-
-    // Clear current user and localStorage
     localStorage.removeItem('currentUser');
     setCurrentUser(null);
 
@@ -349,8 +348,6 @@ const Index = () => {
         return false;
       }
 
-      // In a real app, you'd have a proper password reset flow
-      // For now, we'll just update the password hash
       const passwordHash = btoa(newPassword + 'safeyou_salt');
       await supabaseService.updateUser(userExists.id, { password: passwordHash } as any);
       
