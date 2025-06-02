@@ -115,22 +115,24 @@ const Index = () => {
 
         setIsConnected(true);
 
-        // Cleanup function
+        // Return the unsubscribe function
         return unsubscribe;
       } catch (error) {
         console.error('Error initializing data:', error);
         setIsConnected(false);
+        return undefined;
       }
     };
 
-    const unsubscribe = initializeData();
+    let unsubscribePromise: Promise<(() => void) | undefined>;
+    unsubscribePromise = initializeData();
 
     return () => {
-      if (unsubscribe && typeof unsubscribe.then === 'function') {
-        unsubscribe.then(cleanup => cleanup && cleanup());
-      } else if (typeof unsubscribe === 'function') {
-        unsubscribe();
-      }
+      unsubscribePromise.then(unsubscribe => {
+        if (unsubscribe) {
+          unsubscribe();
+        }
+      });
       supabaseService.destroy();
     };
   }, []);
@@ -142,7 +144,7 @@ const Index = () => {
     }
   }, [currentUser]);
 
-  const handleLogin = async (username: string, password: string, isSignIn: boolean = false) => {
+  const handleLogin = async (username: string, password: string, isSignIn: boolean = false): Promise<boolean> => {
     try {
       if (isSignIn) {
         // Sign in: verify credentials
@@ -338,7 +340,7 @@ const Index = () => {
     });
   };
 
-  const handleResetPassword = async (username: string, newPassword: string) => {
+  const handleResetPassword = async (username: string, newPassword: string): Promise<boolean> => {
     try {
       const allUsers = await supabaseService.getAllUsers();
       const userExists = allUsers.find(u => u.username.toLowerCase() === username.toLowerCase());

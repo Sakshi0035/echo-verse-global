@@ -8,9 +8,9 @@ import { Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import { User } from '../pages/Index';
 
 interface LoginFormProps {
-  onLogin: (username: string, password: string, isSignIn?: boolean) => boolean;
+  onLogin: (username: string, password: string, isSignIn?: boolean) => Promise<boolean>;
   users: User[];
-  onResetPassword: (username: string, newPassword: string) => boolean;
+  onResetPassword: (username: string, newPassword: string) => Promise<boolean>;
 }
 
 const LoginForm: React.FC<LoginFormProps> = ({ onLogin, users, onResetPassword }) => {
@@ -70,7 +70,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, users, onResetPassword }
     if (!validateForm(isSignIn)) return;
 
     setIsLoading(true);
-    const success = onLogin(username.trim(), password, isSignIn);
+    const success = await onLogin(username.trim(), password, isSignIn);
     
     if (!success) {
       setIsLoading(false);
@@ -95,7 +95,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, users, onResetPassword }
     setError('');
   };
 
-  const handleResetPassword = () => {
+  const handleResetPassword = async () => {
     if (!newPassword.trim()) {
       setError('Please enter a new password');
       return;
@@ -106,7 +106,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, users, onResetPassword }
       return;
     }
 
-    const success = onResetPassword(username, newPassword);
+    const success = await onResetPassword(username, newPassword);
     
     if (success) {
       setShowForgotPassword(false);

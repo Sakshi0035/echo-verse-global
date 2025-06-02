@@ -172,13 +172,13 @@ export class SupabaseService {
         userId: data.user_id,
         username: data.username,
         content: data.content,
-        type: data.type,
+        type: (data.type as 'text' | 'image' | 'video') || 'text',
         imageUrl: data.image_url,
         timestamp: new Date(data.created_at),
         isPrivate: data.is_private,
         recipientId: data.recipient_id,
-        reactions: data.reaction || {},
-        readBy: JSON.parse(data.read_by || '[]'),
+        reactions: typeof data.reaction === 'object' && data.reaction !== null ? data.reaction as { [emoji: string]: string[] } : {},
+        readBy: JSON.parse(data.read_by as string || '[]'),
         isEdited: data.is_edited,
         replyTo: data.reply_to_id
       };
@@ -204,13 +204,13 @@ export class SupabaseService {
       userId: msg.user_id,
       username: msg.username,
       content: msg.content,
-      type: msg.type,
+      type: (msg.type as 'text' | 'image' | 'video') || 'text',
       imageUrl: msg.image_url,
       timestamp: new Date(msg.created_at),
       isPrivate: msg.is_private,
       recipientId: msg.recipient_id,
-      reactions: msg.reaction || {},
-      readBy: JSON.parse(msg.read_by || '[]'),
+      reactions: typeof msg.reaction === 'object' && msg.reaction !== null ? msg.reaction as { [emoji: string]: string[] } : {},
+      readBy: JSON.parse(msg.read_by as string || '[]'),
       isEdited: msg.is_edited,
       replyTo: msg.reply_to_id
     }));
