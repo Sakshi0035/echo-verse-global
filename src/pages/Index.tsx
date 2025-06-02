@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect } from 'react';
 import LoginForm from '../components/LoginForm';
 import ChatInterface from '../components/ChatInterface';
 import { useToast } from '@/hooks/use-toast';
-import { realTimeService } from '../utils/realTimeService';
+import { supabaseService } from '../services/supabaseService';
 
 export interface User {
   id: string;
@@ -39,15 +40,6 @@ const Index = () => {
   const [isConnected, setIsConnected] = useState(false);
   const { toast } = useToast();
 
-  // Simple password hashing (in production, use proper bcrypt)
-  const hashPassword = (password: string): string => {
-    return btoa(password + 'safeyou_salt'); // Simple base64 encoding for demo
-  };
-
-  const verifyPassword = (password: string, hashedPassword: string): boolean => {
-    return hashPassword(password) === hashedPassword;
-  };
-
   // Check if user is currently timed out
   const isUserTimedOut = (user: User): boolean => {
     if (!user.isTimedOut || !user.timeoutUntil) return false;
@@ -55,160 +47,177 @@ const Index = () => {
   };
 
   useEffect(() => {
-    // Load initial data
-    const savedUser = localStorage.getItem('currentUser');
-    if (savedUser) {
-      const user = JSON.parse(savedUser);
-      // Check if timeout has expired
-      if (user.timeoutUntil && new Date(user.timeoutUntil) <= new Date()) {
-        user.isTimedOut = false;
-        user.timeoutUntil = undefined;
-        user.reportedBy = undefined;
-      } else if (user.timeoutUntil) {
-        user.isTimedOut = true;
-      }
-      setCurrentUser(user);
-    }
-
-    // Load real-time data - ensure these return arrays
-    const initialMessages = realTimeService.getMessages();
-    const initialUsers = realTimeService.getUsers();
-    
-    console.log('Initial messages:', initialMessages);
-    console.log('Initial users:', initialUsers);
-    
-    setMessages(Array.isArray(initialMessages) ? initialMessages : []);
-    setUsers(Array.isArray(initialUsers) ? initialUsers : []);
-
-    // Subscribe to real-time updates
-    const unsubscribe = realTimeService.subscribe((data) => {
-      console.log('Real-time update received:', data);
-      
-      if (data.type === 'messages') {
-        const newMessages = Array.isArray(data.data) ? data.data : [];
-        setMessages(newMessages);
-      } else if (data.type === 'users') {
-        const newUsers = Array.isArray(data.data) ? data.data : [];
-        setUsers(newUsers);
+    // Load initial data from Supabase
+    const initializeData = async () => {
+      try {
+        console.log('Loading initial data from Supabase...');
         
-        // Update current user if their data changed (e.g., timeout status)
-        if (currentUser) {
-          const updatedCurrentUser = newUsers.find(u => u.id === currentUser.id);
-          if (updatedCurrentUser) {
-            setCurrentUser(updatedCurrentUser);
+        const [initialMessages, initialUsers] = await Promise.all([
+          supabaseService.getAllMessages(),
+          supabaseService.getAllUsers()
+        ]);
+        
+        console.log('Initial messages:', initialMessages);
+        console.log('Initial users:', initialUsers);
+        
+        setMessages(initialMessages);
+        setUsers(initialUsers);
+
+        // Check for saved user in localStorage and verify they still exist
+        const savedUser = localStorage.getItem('currentUser');
+        if (savedUser) {
+          const user = JSON.parse(savedUser);
+          const existingUser = initialUsers.find(u => u.id === user.id);
+          
+          if (existingUser) {
+            // Check if timeout has expired
+            if (existingUser.timeoutUntil && new Date(existingUser.timeoutUntil) <= new Date()) {
+              await supabaseService.updateUser(existingUser.id, {
+                isTimedOut: false,
+                timeoutUntil: undefined,
+                reportedBy: undefined
+              });
+              existingUser.isTimedOut = false;
+              existingUser.timeoutUntil = undefined;
+              existingUser.reportedBy = undefined;
+            }
+            
+            // Update user as online
+            await supabaseService.updateUser(existingUser.id, {
+              isOnline: true,
+              lastSeen: new Date()
+            });
+            
+            setCurrentUser(existingUser);
+          } else {
+            localStorage.removeItem('currentUser');
           }
         }
-      }
-    });
 
-    setIsConnected(true);
+        // Subscribe to real-time updates
+        const unsubscribe = supabaseService.subscribe((data) => {
+          console.log('Real-time update received:', data);
+          
+          if (data.type === 'messages') {
+            setMessages(data.data);
+          } else if (data.type === 'users') {
+            setUsers(data.data);
+            
+            // Update current user if their data changed
+            if (currentUser) {
+              const updatedCurrentUser = data.data.find((u: User) => u.id === currentUser.id);
+              if (updatedCurrentUser) {
+                setCurrentUser(updatedCurrentUser);
+              }
+            }
+          }
+        });
+
+        setIsConnected(true);
+
+        // Cleanup function
+        return unsubscribe;
+      } catch (error) {
+        console.error('Error initializing data:', error);
+        setIsConnected(false);
+      }
+    };
+
+    const unsubscribe = initializeData();
 
     return () => {
-      unsubscribe();
-      realTimeService.destroy();
+      if (unsubscribe && typeof unsubscribe.then === 'function') {
+        unsubscribe.then(cleanup => cleanup && cleanup());
+      } else if (typeof unsubscribe === 'function') {
+        unsubscribe();
+      }
+      supabaseService.destroy();
     };
   }, []);
 
-  // Save to localStorage whenever data changes
+  // Save current user to localStorage when it changes
   useEffect(() => {
     if (currentUser) {
       localStorage.setItem('currentUser', JSON.stringify(currentUser));
     }
   }, [currentUser]);
 
-  useEffect(() => {
-    localStorage.setItem('chatMessages', JSON.stringify(messages));
-  }, [messages]);
+  const handleLogin = async (username: string, password: string, isSignIn: boolean = false) => {
+    try {
+      if (isSignIn) {
+        // Sign in: verify credentials
+        const { user, error } = await supabaseService.loginUser(username, password);
+        
+        if (error) {
+          toast({
+            title: error.includes('Invalid') ? "Invalid credentials" : "User not found",
+            description: error.includes('Invalid') ? "Incorrect password. Click 'Forgot Password?' to reset it." : "This username doesn't exist. Please sign up first.",
+            variant: "destructive"
+          });
+          return false;
+        }
 
-  useEffect(() => {
-    localStorage.setItem('allUsers', JSON.stringify(users));
-  }, [users]);
+        if (!user) return false;
 
-  const handleLogin = (username: string, password: string, isSignIn: boolean = false) => {
-    if (isSignIn) {
-      // Sign in: verify credentials
-      const existingUser = users.find(u => u.username.toLowerCase() === username.toLowerCase());
-      if (!existingUser) {
-        toast({
-          title: "User not found",
-          description: "This username doesn't exist. Please sign up first.",
-          variant: "destructive"
-        });
-        return false;
+        // Check if user is timed out
+        if (isUserTimedOut(user)) {
+          const timeLeft = Math.ceil((new Date(user.timeoutUntil!).getTime() - new Date().getTime()) / (1000 * 60));
+          toast({
+            title: "Account temporarily suspended",
+            description: `You have been reported by ${user.reportedBy}. You can't send messages for ${timeLeft} more minutes.`,
+            variant: "destructive"
+          });
+        }
+
+        setCurrentUser(user);
+      } else {
+        // Sign up: create new user
+        const existingUsers = await supabaseService.getAllUsers();
+        const usernameExists = existingUsers.some(u => u.username.toLowerCase() === username.toLowerCase());
+        
+        if (usernameExists) {
+          toast({
+            title: "Username taken",
+            description: "This username already exists. Please choose a different username.",
+            variant: "destructive"
+          });
+          return false;
+        }
+
+        const { user, error } = await supabaseService.createUser(username, password);
+        
+        if (error || !user) {
+          toast({
+            title: "Sign up failed",
+            description: error || "Failed to create account. Please try again.",
+            variant: "destructive"
+          });
+          return false;
+        }
+
+        setCurrentUser(user);
       }
-
-      if (!verifyPassword(password, existingUser.password)) {
-        toast({
-          title: "Invalid credentials",
-          description: "Incorrect password. Click 'Forgot Password?' to reset it.",
-          variant: "destructive"
-        });
-        return false;
-      }
-
-      // Check if user is timed out
-      if (isUserTimedOut(existingUser)) {
-        const timeLeft = Math.ceil((new Date(existingUser.timeoutUntil!).getTime() - new Date().getTime()) / (1000 * 60));
-        toast({
-          title: "Account temporarily suspended",
-          description: `You have been reported by ${existingUser.reportedBy}. You can't send messages for ${timeLeft} more minutes.`,
-          variant: "destructive"
-        });
-      }
-
-      const updatedUser = { ...existingUser, isOnline: true, lastSeen: new Date() };
-      setCurrentUser(updatedUser);
-
-      // Update users list
-      const updatedUsers = users.map(u => u.id === existingUser.id ? updatedUser : u);
-      setUsers(updatedUsers);
-      realTimeService.broadcastUserUpdate(updatedUsers);
-
-    } else {
-      // Sign up: create new user
-      const usernameExists = users.some(u => u.username.toLowerCase() === username.toLowerCase());
       
-      if (usernameExists) {
-        toast({
-          title: "Username taken",
-          description: "This username already exists. Please choose a different username.",
-          variant: "destructive"
-        });
-        return false;
-      }
-
-      const newUser: User = {
-        id: Date.now().toString(),
-        username,
-        password: hashPassword(password),
-        isOnline: true,
-        lastSeen: new Date(),
-        isTimedOut: false
-      };
-
-      setCurrentUser(newUser);
+      toast({
+        title: isSignIn ? "Welcome back!" : "Welcome to SafeYou Chat!",
+        description: `You've ${isSignIn ? 'signed in' : 'joined'} as ${username}`,
+      });
       
-      // Update users list and broadcast to all devices
-      const updatedUsers = [...users, newUser];
-      setUsers(updatedUsers);
-      realTimeService.broadcastUserUpdate(updatedUsers);
+      return true;
+    } catch (error) {
+      console.error('Login error:', error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive"
+      });
+      return false;
     }
-    
-    toast({
-      title: isSignIn ? "Welcome back!" : "Welcome to SafeYou Chat!",
-      description: `You've ${isSignIn ? 'signed in' : 'joined'} as ${username}`,
-    });
-    
-    return true;
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     if (currentUser) {
-      const updatedUsers = users.map(u => 
-        u.id === currentUser.id ? { ...u, isOnline: false, lastSeen: new Date() } : u
-      );
-      setUsers(updatedUsers);
-      realTimeService.broadcastUserUpdate(updatedUsers);
+      await supabaseService.logoutUser(currentUser.id);
       localStorage.removeItem('currentUser');
       setCurrentUser(null);
       toast({
@@ -218,7 +227,7 @@ const Index = () => {
     }
   };
 
-  const handleSendMessage = (content: string, type: 'text' | 'image' | 'video' = 'text', imageUrl?: string, recipientId?: string, replyToId?: string) => {
+  const handleSendMessage = async (content: string, type: 'text' | 'image' | 'video' = 'text', imageUrl?: string, recipientId?: string, replyToId?: string) => {
     if (!currentUser) return;
 
     // Check if current user is timed out
@@ -232,14 +241,12 @@ const Index = () => {
       return;
     }
 
-    const newMessage: Message = {
-      id: Date.now().toString(),
+    const newMessage = {
       userId: currentUser.id,
       username: currentUser.username,
       content,
       type,
-      imageUrl, // Include image URL for combined messages
-      timestamp: new Date(),
+      imageUrl,
       isPrivate: !!recipientId,
       recipientId,
       reactions: {},
@@ -248,17 +255,14 @@ const Index = () => {
       replyTo: replyToId
     };
 
-    // Broadcast message to all devices
-    realTimeService.broadcastMessage(newMessage);
+    await supabaseService.sendMessage(newMessage);
   };
 
-  const handleDeleteMessage = (messageId: string) => {
+  const handleDeleteMessage = async (messageId: string) => {
     const message = messages.find(m => m.id === messageId);
     if (!message || message.userId !== currentUser?.id) return;
 
-    const updatedMessages = messages.filter(msg => msg.id !== messageId);
-    setMessages(updatedMessages);
-    realTimeService.broadcastUpdatedMessages(updatedMessages);
+    await supabaseService.deleteMessage(messageId);
     
     toast({
       title: "Message deleted",
@@ -266,7 +270,7 @@ const Index = () => {
     });
   };
 
-  const handleReportMessage = (messageId: string) => {
+  const handleReportMessage = async (messageId: string) => {
     const message = messages.find(m => m.id === messageId);
     if (!message || !currentUser) return;
 
@@ -277,19 +281,11 @@ const Index = () => {
     const timeoutUntil = new Date();
     timeoutUntil.setMinutes(timeoutUntil.getMinutes() + 40);
 
-    const updatedUsers = users.map(u => 
-      u.id === reportedUser.id 
-        ? { ...u, isTimedOut: true, timeoutUntil, reportedBy: currentUser.username }
-        : u
-    );
-    
-    setUsers(updatedUsers);
-    realTimeService.broadcastUserUpdate(updatedUsers);
-
-    // Update current user if they reported themselves (shouldn't happen but safety check)
-    if (currentUser.id === reportedUser.id) {
-      setCurrentUser(prev => prev ? { ...prev, isTimedOut: true, timeoutUntil, reportedBy: currentUser.username } : null);
-    }
+    await supabaseService.updateUser(reportedUser.id, {
+      isTimedOut: true,
+      timeoutUntil,
+      reportedBy: currentUser.username
+    });
 
     toast({
       title: "User reported",
@@ -297,31 +293,27 @@ const Index = () => {
     });
   };
 
-  const handleReaction = (messageId: string, emoji: string) => {
+  const handleReaction = async (messageId: string, emoji: string) => {
     if (!currentUser) return;
 
-    const updatedMessages = messages.map(msg => {
-      if (msg.id === messageId) {
-        const reactions = { ...msg.reactions };
-        if (reactions[emoji]) {
-          if (reactions[emoji].includes(currentUser.id)) {
-            reactions[emoji] = reactions[emoji].filter(id => id !== currentUser.id);
-            if (reactions[emoji].length === 0) {
-              delete reactions[emoji];
-            }
-          } else {
-            reactions[emoji].push(currentUser.id);
-          }
-        } else {
-          reactions[emoji] = [currentUser.id];
-        }
-        return { ...msg, reactions };
-      }
-      return msg;
-    });
+    const message = messages.find(msg => msg.id === messageId);
+    if (!message) return;
 
-    setMessages(updatedMessages);
-    realTimeService.broadcastUpdatedMessages(updatedMessages);
+    const reactions = { ...message.reactions };
+    if (reactions[emoji]) {
+      if (reactions[emoji].includes(currentUser.id)) {
+        reactions[emoji] = reactions[emoji].filter(id => id !== currentUser.id);
+        if (reactions[emoji].length === 0) {
+          delete reactions[emoji];
+        }
+      } else {
+        reactions[emoji].push(currentUser.id);
+      }
+    } else {
+      reactions[emoji] = [currentUser.id];
+    }
+
+    await supabaseService.updateMessage(messageId, { reactions });
   };
 
   const handleUsernameClick = (userId: string) => {
@@ -329,18 +321,11 @@ const Index = () => {
     return userId;
   };
 
-  const handleDeleteAccount = () => {
+  const handleDeleteAccount = async () => {
     if (!currentUser) return;
 
-    // Remove user from users list
-    const updatedUsers = users.filter(u => u.id !== currentUser.id);
-    setUsers(updatedUsers);
-    realTimeService.broadcastUserUpdate(updatedUsers);
-
-    // Remove all messages from this user
-    const updatedMessages = messages.filter(msg => msg.userId !== currentUser.id);
-    setMessages(updatedMessages);
-    realTimeService.broadcastUpdatedMessages(updatedMessages);
+    // Delete user and their messages
+    await supabaseService.deleteUser(currentUser.id);
 
     // Clear current user and localStorage
     localStorage.removeItem('currentUser');
@@ -353,24 +338,25 @@ const Index = () => {
     });
   };
 
-  const handleResetPassword = (username: string, newPassword: string) => {
-    const userExists = users.find(u => u.username.toLowerCase() === username.toLowerCase());
-    
-    if (!userExists) {
+  const handleResetPassword = async (username: string, newPassword: string) => {
+    try {
+      const allUsers = await supabaseService.getAllUsers();
+      const userExists = allUsers.find(u => u.username.toLowerCase() === username.toLowerCase());
+      
+      if (!userExists) {
+        return false;
+      }
+
+      // In a real app, you'd have a proper password reset flow
+      // For now, we'll just update the password hash
+      const passwordHash = btoa(newPassword + 'safeyou_salt');
+      await supabaseService.updateUser(userExists.id, { password: passwordHash } as any);
+      
+      return true;
+    } catch (error) {
+      console.error('Password reset error:', error);
       return false;
     }
-
-    // Update user's password
-    const updatedUsers = users.map(u => 
-      u.username.toLowerCase() === username.toLowerCase() 
-        ? { ...u, password: hashPassword(newPassword) }
-        : u
-    );
-    
-    setUsers(updatedUsers);
-    realTimeService.broadcastUserUpdate(updatedUsers);
-    
-    return true;
   };
 
   if (!currentUser) {
@@ -386,8 +372,8 @@ const Index = () => {
   return (
     <ChatInterface
       currentUser={currentUser}
-      users={Array.isArray(users) ? users : []}
-      messages={Array.isArray(messages) ? messages : []}
+      users={users}
+      messages={messages}
       onSendMessage={handleSendMessage}
       onDeleteMessage={handleDeleteMessage}
       onReportMessage={handleReportMessage}

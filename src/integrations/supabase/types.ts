@@ -14,24 +14,45 @@ export type Database = {
           content: string
           created_at: string | null
           id: string
+          image_url: string | null
+          is_edited: boolean | null
+          is_private: boolean | null
           reaction: Json | null
+          read_by: Json | null
+          recipient_id: string | null
           reply_to_id: string | null
+          type: string | null
+          user_id: string | null
           username: string | null
         }
         Insert: {
           content: string
           created_at?: string | null
           id?: string
+          image_url?: string | null
+          is_edited?: boolean | null
+          is_private?: boolean | null
           reaction?: Json | null
+          read_by?: Json | null
+          recipient_id?: string | null
           reply_to_id?: string | null
+          type?: string | null
+          user_id?: string | null
           username?: string | null
         }
         Update: {
           content?: string
           created_at?: string | null
           id?: string
+          image_url?: string | null
+          is_edited?: boolean | null
+          is_private?: boolean | null
           reaction?: Json | null
+          read_by?: Json | null
+          recipient_id?: string | null
           reply_to_id?: string | null
+          type?: string | null
+          user_id?: string | null
           username?: string | null
         }
         Relationships: [
@@ -43,6 +64,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      users: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_online: boolean | null
+          is_timed_out: boolean | null
+          last_seen: string | null
+          password_hash: string
+          reported_by: string | null
+          timeout_until: string | null
+          username: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_online?: boolean | null
+          is_timed_out?: boolean | null
+          last_seen?: string | null
+          password_hash: string
+          reported_by?: string | null
+          timeout_until?: string | null
+          username: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_online?: boolean | null
+          is_timed_out?: boolean | null
+          last_seen?: string | null
+          password_hash?: string
+          reported_by?: string | null
+          timeout_until?: string | null
+          username?: string
+        }
+        Relationships: []
       }
     }
     Views: {
