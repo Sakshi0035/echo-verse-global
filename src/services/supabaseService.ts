@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { User, Message } from '../pages/Index';
 
@@ -199,7 +198,8 @@ export class SupabaseService {
       return [];
     }
 
-    return data.map(msg => ({
+    // Transform the messages and resolve reply relationships
+    const messages = data.map(msg => ({
       id: msg.id,
       userId: msg.user_id,
       username: msg.username,
@@ -214,6 +214,20 @@ export class SupabaseService {
       isEdited: msg.is_edited,
       replyTo: msg.reply_to_id
     }));
+
+    // Now resolve the reply relationships
+    return messages.map(message => {
+      if (message.replyTo && typeof message.replyTo === 'string') {
+        const replyToMessage = messages.find(m => m.id === message.replyTo);
+        if (replyToMessage) {
+          return {
+            ...message,
+            replyTo: replyToMessage
+          };
+        }
+      }
+      return message;
+    });
   }
 
   async updateMessage(messageId: string, updates: Partial<Message>): Promise<void> {

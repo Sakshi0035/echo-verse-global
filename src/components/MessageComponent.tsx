@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Message, User } from '../pages/Index';
 import { Button } from '@/components/ui/button';
@@ -8,7 +9,7 @@ import { MoreHorizontal, Trash2, AlertTriangle, Reply, Heart, Check, CheckCheck 
 interface MessageComponentProps {
   message: Message;
   currentUser: User;
-  onReply: () => void;
+  onReply: (replyToMessage: Message) => void;
   onDelete?: (messageId: string) => void;
   onReport?: (messageId: string) => void;
   onReaction?: (messageId: string, emoji: string) => void;
@@ -57,7 +58,7 @@ const MessageComponent: React.FC<MessageComponentProps> = ({
   };
 
   const handleReply = () => {
-    onReply();
+    onReply(message);
   };
 
   const renderReadReceipt = () => {
@@ -80,22 +81,38 @@ const MessageComponent: React.FC<MessageComponentProps> = ({
   const renderReplyPreview = () => {
     if (!message.replyTo) return null;
     
-    // Check if replyTo is a string (ID) or an object (Message)
-    if (typeof message.replyTo === 'string') return null;
+    // Handle both string ID and Message object
+    let replyToMessage: Message | null = null;
     
-    // Now TypeScript knows message.replyTo is a Message object
-    const replyToMessage = message.replyTo as Message;
+    if (typeof message.replyTo === 'string') {
+      // If it's just an ID, we can't show the preview properly
+      return (
+        <div className="bg-cyan-500/10 border-l-4 border-cyan-400 p-2 mb-2 rounded-r">
+          <div className="flex items-center gap-2">
+            <Reply className="h-3 w-3 text-cyan-400 flex-shrink-0" />
+            <div className="text-cyan-300/70 text-xs">
+              Replying to a message
+            </div>
+          </div>
+        </div>
+      );
+    } else {
+      // It's a full Message object
+      replyToMessage = message.replyTo as Message;
+    }
+    
+    if (!replyToMessage) return null;
     
     return (
-      <div className="bg-cyan-500/10 border-l-4 border-cyan-400 p-3 mb-3 rounded-r">
+      <div className="bg-cyan-500/10 border-l-4 border-cyan-400 p-2 mb-2 rounded-r">
         <div className="flex items-start gap-2">
-          <Reply className="h-4 w-4 text-cyan-400 mt-0.5 flex-shrink-0" />
+          <Reply className="h-3 w-3 text-cyan-400 mt-0.5 flex-shrink-0" />
           <div className="flex-1 min-w-0">
-            <div className="text-cyan-300 font-medium text-sm mb-1">
+            <div className="text-cyan-300 font-medium text-xs mb-1">
               {replyToMessage.username}
             </div>
-            <div className="text-cyan-200/70 text-sm line-clamp-2 break-words">
-              {replyToMessage.content || '[Media]'}
+            <div className="text-cyan-200/70 text-xs line-clamp-1 break-words">
+              {replyToMessage.content || (replyToMessage.imageUrl ? '[Image]' : '[Media]')}
             </div>
           </div>
         </div>

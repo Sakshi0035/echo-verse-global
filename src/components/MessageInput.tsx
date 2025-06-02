@@ -1,20 +1,28 @@
+
 import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Paperclip, Smile, Send, X } from 'lucide-react';
+import { Paperclip, Smile, Send, X, Reply } from 'lucide-react';
+import { Message } from '../pages/Index';
 
 interface MessageInputProps {
-  onSendMessage: (content: string, type?: 'text' | 'image' | 'video', imageUrl?: string) => void;
+  onSendMessage: (content: string, type?: 'text' | 'image' | 'video', imageUrl?: string, recipientId?: string, replyToId?: string) => void;
   disabled?: boolean;
   disabledReason?: string;
+  replyTo?: Message | null;
+  onCancelReply?: () => void;
+  recipientId?: string;
 }
 
 const MessageInput: React.FC<MessageInputProps> = ({ 
   onSendMessage, 
   disabled = false,
-  disabledReason 
+  disabledReason,
+  replyTo,
+  onCancelReply,
+  recipientId
 }) => {
   const [message, setMessage] = useState('');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -39,14 +47,19 @@ const MessageInput: React.FC<MessageInputProps> = ({
       // For each file, send as combined message with text
       previewFiles.forEach((file, index) => {
         const textToSend = index === 0 ? message.trim() : ''; // Only include text with first image
-        onSendMessage(textToSend, file.type, file.url);
+        onSendMessage(textToSend, file.type, file.url, recipientId, replyTo?.id);
       });
       setPreviewFiles([]);
       setMessage('');
     } else if (message.trim()) {
       // Send text-only message
-      onSendMessage(message.trim());
+      onSendMessage(message.trim(), 'text', undefined, recipientId, replyTo?.id);
       setMessage('');
+    }
+
+    // Clear reply after sending
+    if (onCancelReply) {
+      onCancelReply();
     }
   };
 
@@ -89,6 +102,9 @@ const MessageInput: React.FC<MessageInputProps> = ({
     if (disabled) {
       return "You are temporarily suspended from sending messages...";
     }
+    if (replyTo) {
+      return `Replying to ${replyTo.username}...`;
+    }
     if (previewFiles.length > 0) {
       return "Add text to send with your media...";
     }
@@ -97,6 +113,35 @@ const MessageInput: React.FC<MessageInputProps> = ({
 
   return (
     <div className="bg-gray-900/95 backdrop-blur border-t border-blue-500/30 p-2 md:p-4 neon-border">
+      {/* Reply Preview */}
+      {replyTo && (
+        <div className="mb-3 bg-cyan-500/20 border-l-4 border-cyan-500 p-3 rounded-r neon-border shadow-glow-cyan">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 flex-1">
+              <Reply className="h-4 w-4 text-cyan-400" />
+              <div className="flex-1">
+                <div className="text-sm font-medium text-cyan-300 mb-1">
+                  Replying to {replyTo.username}
+                </div>
+                <div className="text-cyan-200/70 text-sm truncate">
+                  {replyTo.content || (replyTo.imageUrl ? '[Image]' : '[Media]')}
+                </div>
+              </div>
+            </div>
+            {onCancelReply && (
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={onCancelReply}
+                className="h-6 w-6 p-0 text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/20"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* File Previews */}
       {previewFiles.length > 0 && (
         <div className="mb-3">
