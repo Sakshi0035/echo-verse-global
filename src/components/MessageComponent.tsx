@@ -58,8 +58,8 @@ const MessageComponent: React.FC<MessageComponentProps> = ({
     
     const replyMessage = message.replyTo as Message;
     return (
-      <div className="bg-cyan-500/10 border-l-2 border-cyan-500 pl-3 py-2 mb-2 rounded-r text-sm">
-        <div className="text-cyan-400 font-medium text-xs mb-1">
+      <div className="bg-cyan-500/10 border-l-2 border-cyan-500 pl-2 py-1 mb-2 rounded-r text-xs">
+        <div className="text-cyan-400 font-medium mb-0.5">
           Replying to {replyMessage.username}
         </div>
         <div className="text-cyan-200/80 truncate">
@@ -72,15 +72,15 @@ const MessageComponent: React.FC<MessageComponentProps> = ({
   const reactionEmojis = ['❤️', '👍', '😂', '😮', '😢', '😡'];
 
   return (
-    <div className={`flex gap-3 p-4 rounded-lg transition-all duration-300 hover:bg-cyan-500/5 ${
+    <div className={`flex gap-2 p-2 rounded-lg transition-all duration-300 hover:bg-cyan-500/5 ${
       isOwn 
-        ? 'ml-12 bg-gradient-to-r from-cyan-900/20 to-cyan-800/20 border border-cyan-500/30' 
-        : 'mr-12 bg-gradient-to-r from-gray-900/40 to-gray-800/40 border border-gray-600/30'
-    } ${isPrivate ? 'ring-2 ring-purple-500/50' : ''} neon-border shadow-glow-cyan`}>
+        ? 'ml-8 bg-gradient-to-r from-cyan-900/20 to-cyan-800/20 border border-cyan-500/30' 
+        : 'mr-8 bg-gradient-to-r from-gray-900/40 to-gray-800/40 border border-gray-600/30'
+    } ${isPrivate ? 'ring-1 ring-purple-500/50' : ''}`}>
       
       {/* Avatar */}
       <div className="flex-shrink-0">
-        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shadow-glow-cyan ${
+        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
           isOwn 
             ? 'bg-gradient-to-br from-cyan-400 to-cyan-600 text-black' 
             : 'bg-gradient-to-br from-gray-400 to-gray-600 text-white'
@@ -96,11 +96,11 @@ const MessageComponent: React.FC<MessageComponentProps> = ({
           <div className="flex items-center gap-2">
             <button
               onClick={handleUsernameClick}
-              className={`font-semibold text-sm transition-colors duration-300 ${
+              className={`font-semibold text-xs transition-colors duration-300 ${
                 isOwn 
                   ? 'text-cyan-300 hover:text-cyan-200' 
                   : 'text-gray-300 hover:text-cyan-300 hover:cursor-pointer'
-              } neon-text`}
+              }`}
             >
               {message.username}
             </button>
@@ -108,7 +108,7 @@ const MessageComponent: React.FC<MessageComponentProps> = ({
               {formatTime(message.timestamp)}
             </span>
             {isPrivate && (
-              <span className="text-xs bg-purple-500/20 text-purple-300 px-2 py-1 rounded border border-purple-500/30">
+              <span className="text-xs bg-purple-500/20 text-purple-300 px-1 py-0.5 rounded text-xs">
                 Private
               </span>
             )}
@@ -120,11 +120,11 @@ const MessageComponent: React.FC<MessageComponentProps> = ({
           {/* Message Actions */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-gray-400 hover:text-cyan-300 hover:bg-cyan-500/20">
+              <Button variant="ghost" size="sm" className="h-5 w-5 p-0 text-gray-400 hover:text-cyan-300 hover:bg-cyan-500/20">
                 <MoreVertical className="h-3 w-3" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="bg-black border-cyan-500/30 neon-border">
+            <DropdownMenuContent align="end" className="bg-black border-cyan-500/30">
               {onReply && (
                 <DropdownMenuItem 
                   onClick={() => onReply(message)}
@@ -167,19 +167,19 @@ const MessageComponent: React.FC<MessageComponentProps> = ({
         {renderReplyPreview()}
 
         {/* Message Content */}
-        <div className="space-y-2">
+        <div className="space-y-1">
           {message.imageUrl && (
-            <div className="rounded-lg overflow-hidden border border-cyan-500/30 shadow-glow-cyan">
+            <div className="rounded overflow-hidden border border-cyan-500/30">
               <img 
                 src={message.imageUrl} 
                 alt="Shared image" 
-                className="max-w-full h-auto max-h-64 object-cover"
+                className="max-w-full h-auto max-h-48 object-cover"
               />
             </div>
           )}
           
           {message.content && (
-            <p className="text-gray-200 break-words leading-relaxed">
+            <p className="text-gray-200 break-words text-sm leading-relaxed">
               {message.content}
             </p>
           )}
@@ -187,12 +187,12 @@ const MessageComponent: React.FC<MessageComponentProps> = ({
 
         {/* Reaction Picker */}
         {showReactions && (
-          <div className="flex gap-1 mt-2 p-2 bg-black/60 rounded-lg border border-cyan-500/30 neon-border">
+          <div className="flex gap-1 mt-2 p-2 bg-black/60 rounded border border-cyan-500/30">
             {reactionEmojis.map(emoji => (
               <button
                 key={emoji}
                 onClick={() => handleReaction(emoji)}
-                className="p-1 hover:bg-cyan-500/20 rounded transition-colors duration-300 text-lg hover:scale-110"
+                className="p-1 hover:bg-cyan-500/20 rounded transition-colors duration-300 text-sm hover:scale-110"
               >
                 {emoji}
               </button>
@@ -202,14 +202,14 @@ const MessageComponent: React.FC<MessageComponentProps> = ({
 
         {/* Reactions Display */}
         {message.reactions && Object.keys(message.reactions).length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-2">
+          <div className="flex flex-wrap gap-1 mt-1">
             {Object.entries(message.reactions).map(([emoji, userIds]) => (
               <button
                 key={emoji}
                 onClick={() => handleReaction(emoji)}
-                className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs transition-all duration-300 border ${
+                className={`flex items-center gap-1 px-1 py-0.5 rounded-full text-xs transition-all duration-300 border ${
                   userIds.includes(currentUser.id)
-                    ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50 shadow-glow-cyan'
+                    ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50'
                     : 'bg-gray-800/60 text-gray-300 border-gray-600/50 hover:bg-cyan-500/10 hover:border-cyan-500/30'
                 }`}
               >
