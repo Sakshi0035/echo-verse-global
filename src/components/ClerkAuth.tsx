@@ -35,6 +35,7 @@ export const ClerkAuth = ({ onAuthSuccess }: ClerkAuthProps) => {
             <SignIn 
               routing="hash"
               signUpUrl="#signup"
+              afterSignInUrl="/"
               appearance={{
                 elements: {
                   rootBox: "w-full",
@@ -48,6 +49,7 @@ export const ClerkAuth = ({ onAuthSuccess }: ClerkAuthProps) => {
             <SignUp 
               routing="hash"
               signInUrl="#signin"
+              afterSignUpUrl="/"
               appearance={{
                 elements: {
                   rootBox: "w-full",
