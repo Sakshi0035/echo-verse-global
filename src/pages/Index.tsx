@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { ClerkAuth } from '../components/ClerkAuth';
+import LoginForm from '../components/LoginForm';
 import ChatInterface from '../components/ChatInterface';
 import { useToast } from '@/hooks/use-toast';
 import { supabaseService } from '../services/supabaseService';
-import { useUser } from '@clerk/clerk-react';
 
 export interface User {
   id: string;
@@ -14,7 +13,7 @@ export interface User {
   avatar?: string;
   isTimedOut?: boolean;
   timeoutUntil?: Date;
-  reportedBy?: string[];
+  reportedBy?: string;
 }
 
 export interface Message {
@@ -34,12 +33,10 @@ export interface Message {
 }
 
 const Index = () => {
-  const { isSignedIn } = useUser();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isConnected, setIsConnected] = useState(false);
-  const [isAuthReady, setIsAuthReady] = useState(false);
   const { toast } = useToast();
 
   // Check if user is currently timed out
@@ -65,6 +62,33 @@ const Index = () => {
         setMessages(initialMessages);
         setUsers(initialUsers);
 
+        // Enhanced user session handling - sync across all sessions
+        const savedUser = localStorage.getItem('currentUser');
+        if (savedUser) {
+          const user = JSON.parse(savedUser);
+          const existingUser = initialUsers.find(u => u.id === user.id);
+          
+          if (existingUser) {
+            // Check if timeout has expired
+            if (existingUser.timeoutUntil && new Date(existingUser.timeoutUntil) <= new Date()) {
+              await supabaseService.updateUser(existingUser.id, {
+                isTimedOut: false,
+                timeoutUntil: undefined,
+                reportedBy: undefined
+              });
+              existingUser.isTimedOut = false;
+              existingUser.timeoutUntil = undefined;
+              existingUser.reportedBy = undefined;
+            }
+            
+            // Sync user status across all sessions
+            await supabaseService.syncUserStatus(existingUser.id);
+            setCurrentUser(existingUser);
+          } else {
+            localStorage.removeItem('currentUser');
+          }
+        }
+
         // Enhanced real-time subscription for cross-session sync
         const unsubscribe = supabaseService.subscribe((data) => {
           console.log('Real-time update received:', data);
@@ -79,6 +103,8 @@ const Index = () => {
               const updatedCurrentUser = data.data.find((u: User) => u.id === currentUser.id);
               if (updatedCurrentUser) {
                 setCurrentUser(updatedCurrentUser);
+                // Update localStorage to maintain sync
+                localStorage.setItem('currentUser', JSON.stringify(updatedCurrentUser));
               }
             }
           }
@@ -112,40 +138,93 @@ const Index = () => {
       });
       supabaseService.destroy();
     };
+  }, []);
+
+  // Enhanced localStorage sync for cross-session consistency
+  useEffect(() => {
+    if (currentUser) {
+      localStorage.setItem('currentUser', JSON.stringify(currentUser));
+    }
   }, [currentUser]);
 
-  const handleAuthSuccess = async (userId: string, username: string) => {
+  const handleLogin = async (username: string, password: string, isSignIn: boolean = false): Promise<boolean> => {
     try {
-      const allUsers = await supabaseService.getAllUsers();
-      let user = allUsers.find(u => u.id === userId);
-      
-      if (!user) {
-        const { user: newUser } = await supabaseService.createUser(username, userId);
-        if (newUser) {
-          user = newUser;
+      if (isSignIn) {
+        // Sign in: verify credentials
+        const { user, error } = await supabaseService.loginUser(username, password);
+        
+        if (error) {
+          toast({
+            title: error.includes('Invalid') ? "Invalid credentials" : "User not found",
+            description: error.includes('Invalid') ? "Incorrect password. Click 'Forgot Password?' to reset it." : "This username doesn't exist. Please sign up first.",
+            variant: "destructive"
+          });
+          return false;
         }
+
+        if (!user) return false;
+
+        // Check if user is timed out
+        if (isUserTimedOut(user)) {
+          const timeLeft = Math.ceil((new Date(user.timeoutUntil!).getTime() - new Date().getTime()) / (1000 * 60));
+          toast({
+            title: "Account temporarily suspended",
+            description: `You have been reported by ${user.reportedBy}. You can't send messages for ${timeLeft} more minutes.`,
+            variant: "destructive"
+          });
+        }
+
+        setCurrentUser(user);
       } else {
-        await supabaseService.syncUserStatus(userId);
+        // Sign up: create new user
+        const existingUsers = await supabaseService.getAllUsers();
+        const usernameExists = existingUsers.some(u => u.username.toLowerCase() === username.toLowerCase());
+        
+        if (usernameExists) {
+          toast({
+            title: "Username taken",
+            description: "This username already exists. Please choose a different username.",
+            variant: "destructive"
+          });
+          return false;
+        }
+
+        const { user, error } = await supabaseService.createUser(username, password);
+        
+        if (error || !user) {
+          toast({
+            title: "Sign up failed",
+            description: error || "Failed to create account. Please try again.",
+            variant: "destructive"
+          });
+          return false;
+        }
+
+        setCurrentUser(user);
       }
       
-      if (user) {
-        setCurrentUser(user);
-        setIsAuthReady(true);
-        toast({
-          title: "Welcome!",
-          description: `Signed in as ${username}`,
-        });
-      }
+      toast({
+        title: isSignIn ? "Welcome back!" : "Welcome to SafeYou Chat!",
+        description: `You've ${isSignIn ? 'signed in' : 'joined'} as ${username}`,
+      });
+      
+      return true;
     } catch (error) {
-      console.error('Auth success handler error:', error);
+      console.error('Login error:', error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive"
+      });
+      return false;
     }
   };
 
   const handleLogout = async () => {
     if (currentUser) {
       await supabaseService.logoutUser(currentUser.id);
+      localStorage.removeItem('currentUser');
       setCurrentUser(null);
-      setIsAuthReady(false);
       toast({
         title: "Logged out",
         description: "You have been logged out successfully.",
@@ -207,11 +286,10 @@ const Index = () => {
     const timeoutUntil = new Date();
     timeoutUntil.setMinutes(timeoutUntil.getMinutes() + 40);
 
-    const reportedBy = reportedUser.reportedBy || [];
     await supabaseService.updateUser(reportedUser.id, {
       isTimedOut: true,
       timeoutUntil,
-      reportedBy: [...reportedBy, currentUser.username]
+      reportedBy: currentUser.username
     });
 
     toast({
@@ -251,8 +329,8 @@ const Index = () => {
     if (!currentUser) return;
 
     await supabaseService.deleteUser(currentUser.id);
+    localStorage.removeItem('currentUser');
     setCurrentUser(null);
-    setIsAuthReady(false);
 
     toast({
       title: "Account deleted",
@@ -261,8 +339,33 @@ const Index = () => {
     });
   };
 
-  if (!isSignedIn || !isAuthReady) {
-    return <ClerkAuth onAuthSuccess={handleAuthSuccess} />;
+  const handleResetPassword = async (username: string, newPassword: string): Promise<boolean> => {
+    try {
+      const allUsers = await supabaseService.getAllUsers();
+      const userExists = allUsers.find(u => u.username.toLowerCase() === username.toLowerCase());
+      
+      if (!userExists) {
+        return false;
+      }
+
+      const passwordHash = btoa(newPassword + 'safeyou_salt');
+      await supabaseService.updateUser(userExists.id, { password: passwordHash } as any);
+      
+      return true;
+    } catch (error) {
+      console.error('Password reset error:', error);
+      return false;
+    }
+  };
+
+  if (!currentUser) {
+    return (
+      <LoginForm 
+        onLogin={handleLogin}
+        users={users}
+        onResetPassword={handleResetPassword}
+      />
+    );
   }
 
   return (

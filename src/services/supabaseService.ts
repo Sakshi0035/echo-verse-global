@@ -8,14 +8,16 @@ export class SupabaseService {
   private usersChannel: any = null;
 
   // User management
-  async createUser(username: string, clerkUserId: string): Promise<{ user: User | null; error: string | null }> {
+  async createUser(username: string, password: string): Promise<{ user: User | null; error: string | null }> {
     try {
+      // Simple password hashing (in production, use proper bcrypt)
+      const passwordHash = btoa(password + 'safeyou_salt');
+      
       const { data, error } = await supabase
         .from('users')
         .insert([{
-          id: clerkUserId,
           username,
-          password_hash: '',
+          password_hash: passwordHash,
           is_online: true,
           last_seen: new Date().toISOString()
         }])
@@ -124,7 +126,7 @@ export class SupabaseService {
     if (updates.lastSeen) dbUpdates.last_seen = updates.lastSeen.toISOString();
     if (updates.isTimedOut !== undefined) dbUpdates.is_timed_out = updates.isTimedOut;
     if (updates.timeoutUntil) dbUpdates.timeout_until = updates.timeoutUntil.toISOString();
-    if (updates.reportedBy !== undefined) dbUpdates.reported_by = Array.isArray(updates.reportedBy) ? updates.reportedBy : [updates.reportedBy];
+    if (updates.reportedBy !== undefined) dbUpdates.reported_by = updates.reportedBy;
 
     await supabase
       .from('users')
