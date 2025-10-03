@@ -4,6 +4,7 @@ import ChatInterface from '../components/ChatInterface';
 import { useToast } from '@/hooks/use-toast';
 import { supabaseService } from '../services/supabaseService';
 import { useUser } from '@clerk/clerk-react';
+import { realTimeService } from '../utils/realTimeService';
 
 export interface User {
   id: string;
@@ -150,6 +151,8 @@ const Index = () => {
       }
 
       if (user) {
+        // Clear any legacy local storage and presence state to avoid ghost activity
+        try { realTimeService.clearData(); } catch {}
         setCurrentUser(user);
         toast({
           title: "Welcome!",
@@ -164,6 +167,7 @@ const Index = () => {
   const handleLogout = async () => {
     if (currentUser) {
       await supabaseService.logoutUser(currentUser.id);
+      try { realTimeService.clearData(); } catch {}
       setCurrentUser(null);
       toast({
         title: "Logged out",
