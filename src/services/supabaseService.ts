@@ -12,13 +12,14 @@ export class SupabaseService {
     try {
       const { data, error } = await supabase
         .from('users')
-        .insert([{
-          id: clerkUserId,
-          username,
-          password_hash: '',
-          is_online: true,
-          last_seen: new Date().toISOString()
-        }])
+        .insert([
+          {
+            username,
+            password_hash: '',
+            is_online: true,
+            last_seen: new Date().toISOString(),
+          },
+        ])
         .select()
         .single();
 

@@ -117,17 +117,19 @@ const Index = () => {
   const handleAuthSuccess = async (userId: string, username: string) => {
     try {
       const allUsers = await supabaseService.getAllUsers();
-      let user = allUsers.find(u => u.id === userId);
-      
+      // Find by username instead of Clerk ID (DB uses UUID ids)
+      let user = allUsers.find((u) => u.username === username);
+
       if (!user) {
         const { user: newUser } = await supabaseService.createUser(username, userId);
         if (newUser) {
           user = newUser;
         }
       } else {
-        await supabaseService.syncUserStatus(userId);
+        // Sync by the actual DB user id
+        await supabaseService.syncUserStatus(user.id);
       }
-      
+
       if (user) {
         setCurrentUser(user);
         setIsAuthReady(true);
