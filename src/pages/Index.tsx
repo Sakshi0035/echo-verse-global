@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ClerkAuth } from '../components/ClerkAuth';
+import { useNavigate } from 'react-router-dom';
 import ChatInterface from '../components/ChatInterface';
 import { useToast } from '@/hooks/use-toast';
 import { supabaseService } from '../services/supabaseService';
@@ -34,13 +34,32 @@ export interface Message {
 }
 
 const Index = () => {
-  const { isSignedIn } = useUser();
+  const { isSignedIn, user } = useUser();
+  const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isConnected, setIsConnected] = useState(false);
-  const [isAuthReady, setIsAuthReady] = useState(false);
   const { toast } = useToast();
+
+  // Redirect to /auth when signed out
+  useEffect(() => {
+    if (!isSignedIn) {
+      navigate('/auth', { replace: true });
+    }
+  }, [isSignedIn, navigate]);
+
+  // Ensure DB user exists and hydrate currentUser after Clerk sign-in
+  useEffect(() => {
+    if (isSignedIn && user && !currentUser) {
+      const username =
+        (user as any).username ||
+        (user as any).firstName ||
+        (user as any).emailAddresses?.[0]?.emailAddress.split('@')[0] ||
+        'User';
+      handleAuthSuccess((user as any).id, username);
+    }
+  }, [isSignedIn, user, currentUser]);
 
   // Check if user is currently timed out
   const isUserTimedOut = (user: User): boolean => {
@@ -132,7 +151,6 @@ const Index = () => {
 
       if (user) {
         setCurrentUser(user);
-        setIsAuthReady(true);
         toast({
           title: "Welcome!",
           description: `Signed in as ${username}`,
@@ -147,7 +165,6 @@ const Index = () => {
     if (currentUser) {
       await supabaseService.logoutUser(currentUser.id);
       setCurrentUser(null);
-      setIsAuthReady(false);
       toast({
         title: "Logged out",
         description: "You have been logged out successfully.",
@@ -254,7 +271,7 @@ const Index = () => {
 
     await supabaseService.deleteUser(currentUser.id);
     setCurrentUser(null);
-    setIsAuthReady(false);
+    
 
     toast({
       title: "Account deleted",
@@ -263,8 +280,15 @@ const Index = () => {
     });
   };
 
-  if (!isSignedIn || !isAuthReady) {
-    return <ClerkAuth onAuthSuccess={handleAuthSuccess} />;
+  if (!isSignedIn) {
+    return null;
+  }
+  if (!currentUser) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p>Loading your chat...</p>
+      </div>
+    );
   }
 
   return (
