@@ -14,7 +14,98 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      messages: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: string
+          image_url: string | null
+          is_edited: boolean | null
+          is_private: boolean | null
+          reaction: Json | null
+          read_by: string | null
+          recipient_id: string | null
+          reply_to_id: string | null
+          type: string | null
+          user_id: string
+          username: string
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: string
+          image_url?: string | null
+          is_edited?: boolean | null
+          is_private?: boolean | null
+          reaction?: Json | null
+          read_by?: string | null
+          recipient_id?: string | null
+          reply_to_id?: string | null
+          type?: string | null
+          user_id: string
+          username: string
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: string
+          image_url?: string | null
+          is_edited?: boolean | null
+          is_private?: boolean | null
+          reaction?: Json | null
+          read_by?: string | null
+          recipient_id?: string | null
+          reply_to_id?: string | null
+          type?: string | null
+          user_id?: string
+          username?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_reply_to_id_fkey"
+            columns: ["reply_to_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      users: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_online: boolean | null
+          is_timed_out: boolean | null
+          last_seen: string | null
+          password_hash: string
+          reported_by: string[] | null
+          timeout_until: string | null
+          username: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_online?: boolean | null
+          is_timed_out?: boolean | null
+          last_seen?: string | null
+          password_hash: string
+          reported_by?: string[] | null
+          timeout_until?: string | null
+          username: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_online?: boolean | null
+          is_timed_out?: boolean | null
+          last_seen?: string | null
+          password_hash?: string
+          reported_by?: string[] | null
+          timeout_until?: string | null
+          username?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
