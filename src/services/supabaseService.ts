@@ -15,7 +15,6 @@ export class SupabaseService {
         .insert([
           {
             username,
-            password_hash: '',
             is_online: true,
             last_seen: new Date().toISOString(),
           },
@@ -30,12 +29,12 @@ export class SupabaseService {
       const user: User = {
         id: data.id,
         username: data.username,
-        password: data.password_hash,
+        password: '', // No password storage with Clerk
         isOnline: data.is_online,
         lastSeen: new Date(data.last_seen),
-        isTimedOut: data.is_timed_out,
-        timeoutUntil: data.timeout_until ? new Date(data.timeout_until) : undefined,
-        reportedBy: data.reported_by
+        isTimedOut: false, // Simplified for security
+        timeoutUntil: undefined,
+        reportedBy: []
       };
 
       return { user, error: null };
@@ -44,46 +43,8 @@ export class SupabaseService {
     }
   }
 
-  async loginUser(username: string, password: string): Promise<{ user: User | null; error: string | null }> {
-    try {
-      const passwordHash = btoa(password + 'safeyou_salt');
-      
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('username', username)
-        .eq('password_hash', passwordHash)
-        .single();
-
-      if (error) {
-        return { user: null, error: 'Invalid credentials' };
-      }
-
-      // Update user as online with current timestamp
-      await supabase
-        .from('users')
-        .update({ 
-          is_online: true, 
-          last_seen: new Date().toISOString() 
-        })
-        .eq('id', data.id);
-
-      const user: User = {
-        id: data.id,
-        username: data.username,
-        password: data.password_hash,
-        isOnline: true,
-        lastSeen: new Date(),
-        isTimedOut: data.is_timed_out,
-        timeoutUntil: data.timeout_until ? new Date(data.timeout_until) : undefined,
-        reportedBy: data.reported_by
-      };
-
-      return { user, error: null };
-    } catch (error) {
-      return { user: null, error: (error as Error).message };
-    }
-  }
+  // Remove loginUser method - authentication handled by Clerk
+  // This method is no longer needed since we don't store passwords
 
   async logoutUser(userId: string): Promise<void> {
     await supabase
@@ -97,7 +58,7 @@ export class SupabaseService {
 
   async getAllUsers(): Promise<User[]> {
     const { data, error } = await supabase
-      .from('users')
+      .from('users_safe')  // Use safe view instead of users table
       .select('*')
       .order('created_at', { ascending: true });
 
@@ -109,12 +70,12 @@ export class SupabaseService {
     return data.map(user => ({
       id: user.id,
       username: user.username,
-      password: user.password_hash,
+      password: '', // No longer stored, handled by Clerk
       isOnline: user.is_online,
       lastSeen: new Date(user.last_seen),
-      isTimedOut: user.is_timed_out,
-      timeoutUntil: user.timeout_until ? new Date(user.timeout_until) : undefined,
-      reportedBy: user.reported_by
+      isTimedOut: false, // Not exposed in safe view
+      timeoutUntil: undefined, // Not exposed in safe view  
+      reportedBy: [] // Not exposed in safe view
     }));
   }
 
