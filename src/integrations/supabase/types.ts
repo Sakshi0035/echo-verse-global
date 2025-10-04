@@ -108,7 +108,39 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      users_safe: {
+        Row: {
+          created_at: string | null
+          id: string | null
+          is_online: boolean | null
+          is_timed_out: boolean | null
+          last_seen: string | null
+          reported_by: string[] | null
+          timeout_until: string | null
+          username: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string | null
+          is_online?: boolean | null
+          is_timed_out?: boolean | null
+          last_seen?: string | null
+          reported_by?: string[] | null
+          timeout_until?: string | null
+          username?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string | null
+          is_online?: boolean | null
+          is_timed_out?: boolean | null
+          last_seen?: string | null
+          reported_by?: string[] | null
+          timeout_until?: string | null
+          username?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       [_ in never]: never
