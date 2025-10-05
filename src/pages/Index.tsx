@@ -44,7 +44,7 @@ const Index = () => {
   const [isConnected, setIsConnected] = useState(false);
   const { toast } = useToast();
 
-  // Check authentication and redirect
+  // Check authentication and setup listener
   useEffect(() => {
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -55,11 +55,9 @@ const Index = () => {
     });
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
-      
-      if (!session && event === 'SIGNED_OUT') {
-        setCurrentUser(null);
+      if (!session) {
         navigate('/auth', { replace: true });
       }
     });
@@ -67,12 +65,27 @@ const Index = () => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
-  // Initialize user data when session exists
+  // Load current user from database when session is available
   useEffect(() => {
     if (session && !currentUser) {
-      handleAuthSuccess();
+      const loadCurrentUser = async () => {
+        try {
+          const user = await supabaseService.getCurrentUser();
+          if (user) {
+            try { realTimeService.clearData(); } catch {}
+            setCurrentUser(user);
+            toast({
+              title: "Welcome!",
+              description: `Signed in as ${user.username}`,
+            });
+          }
+        } catch (error) {
+          console.error('Error loading current user:', error);
+        }
+      };
+      loadCurrentUser();
     }
-  }, [session, currentUser]);
+  }, [session, currentUser, toast]);
 
   // Check if user is currently timed out
   const isUserTimedOut = (user: User): boolean => {
@@ -146,32 +159,12 @@ const Index = () => {
     };
   }, [currentUser]);
 
-  const handleAuthSuccess = async () => {
-    try {
-      if (!session) return;
-
-      const user = await supabaseService.getCurrentUser();
-      
-      if (user) {
-        // Clear any legacy local storage and presence state
-        try { realTimeService.clearData(); } catch {}
-        setCurrentUser(user);
-        toast({
-          title: "Welcome!",
-          description: `Signed in as ${user.username}`,
-        });
-      }
-    } catch (error) {
-      console.error('Auth success handler error:', error);
-    }
-  };
-
   const handleLogout = async () => {
     if (currentUser) {
       await supabaseService.logoutUser(currentUser.id);
-      await supabase.auth.signOut();
       try { realTimeService.clearData(); } catch {}
       setCurrentUser(null);
+      await supabase.auth.signOut();
       toast({
         title: "Logged out",
         description: "You have been logged out successfully.",
@@ -278,7 +271,7 @@ const Index = () => {
 
     await supabaseService.deleteUser(currentUser.id);
     setCurrentUser(null);
-    
+    await supabase.auth.signOut();
 
     toast({
       title: "Account deleted",
@@ -290,10 +283,11 @@ const Index = () => {
   if (!session) {
     return null;
   }
+  
   if (!currentUser) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-gray-900 to-cyan-950">
-        <p className="text-cyan-400">Loading your chat...</p>
+        <p className="text-cyan-300">Loading your chat...</p>
       </div>
     );
   }

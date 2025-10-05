@@ -7,11 +7,15 @@ export class SupabaseService {
   private messagesChannel: any = null;
   private usersChannel: any = null;
 
-  // User management
+  // Get current authenticated user from database
   async getCurrentUser(): Promise<User | null> {
     try {
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      if (!authUser) return null;
+      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+      
+      if (authError || !authUser) {
+        console.error('No authenticated user:', authError);
+        return null;
+      }
 
       const { data, error } = await supabase
         .from('users')
@@ -20,7 +24,7 @@ export class SupabaseService {
         .single();
 
       if (error || !data) {
-        console.error('Error fetching current user:', error);
+        console.error('Error fetching user profile:', error);
         return null;
       }
 
@@ -35,7 +39,7 @@ export class SupabaseService {
         reportedBy: data.reported_by || []
       };
     } catch (error) {
-      console.error('Error getting current user:', error);
+      console.error('Error in getCurrentUser:', error);
       return null;
     }
   }
@@ -52,7 +56,7 @@ export class SupabaseService {
 
   async getAllUsers(): Promise<User[]> {
     const { data, error } = await supabase
-      .from('users_safe')  // Use safe view instead of users table
+      .from('users_safe')
       .select('*')
       .order('created_at', { ascending: true });
 
@@ -64,12 +68,12 @@ export class SupabaseService {
     return data.map(user => ({
       id: user.id,
       username: user.username,
-      password: '', // No longer stored, handled by Clerk
+      password: '',
       isOnline: user.is_online,
       lastSeen: new Date(user.last_seen),
-      isTimedOut: false, // Not exposed in safe view
-      timeoutUntil: undefined, // Not exposed in safe view  
-      reportedBy: [] // Not exposed in safe view
+      isTimedOut: false,
+      timeoutUntil: undefined,
+      reportedBy: []
     }));
   }
 

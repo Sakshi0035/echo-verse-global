@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,7 +18,7 @@ const Auth = () => {
 
   useEffect(() => {
     document.title = "Sign In | SafeYou Chat";
-    
+
     // Check if user is already logged in
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
@@ -28,7 +28,7 @@ const Auth = () => {
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session && event === 'SIGNED_IN') {
+      if (session) {
         navigate("/", { replace: true });
       }
     });
@@ -36,12 +36,46 @@ const Auth = () => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/`,
+          data: {
+            username: username || email.split('@')[0]
+          }
+        }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Success!",
+        description: "Check your email to confirm your account.",
+      });
+      setIsSignUp(false);
+    } catch (error: any) {
+      toast({
+        title: "Sign up failed",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
@@ -50,46 +84,13 @@ const Auth = () => {
 
       toast({
         title: "Welcome back!",
-        description: "You have successfully signed in.",
+        description: "You've successfully signed in.",
       });
     } catch (error: any) {
       toast({
-        title: "Error signing in",
+        title: "Sign in failed",
         description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            username: username || email.split('@')[0],
-          },
-          emailRedirectTo: `${window.location.origin}/`,
-        },
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "Account created!",
-        description: "Please check your email to verify your account.",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Error signing up",
-        description: error.message,
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setIsLoading(false);
@@ -99,11 +100,11 @@ const Auth = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-cyan-950 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <div className="bg-black/60 backdrop-blur-xl border border-cyan-500/30 rounded-2xl p-8 shadow-2xl">
+        <div className="bg-black/80 backdrop-blur-lg border border-cyan-500/30 rounded-2xl p-8 shadow-2xl">
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-cyan-400 mb-2">SafeYou Chat</h1>
             <p className="text-cyan-300/70">
-              {isSignUp ? "Create your account" : "Sign in to continue"}
+              {isSignUp ? "Create your account" : "Sign in to your account"}
             </p>
           </div>
 
@@ -116,8 +117,8 @@ const Auth = () => {
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="bg-black/40 border-cyan-500/30 text-cyan-100 focus:border-cyan-400"
-                  placeholder="Your username"
+                  className="bg-gray-900/50 border-cyan-500/30 text-cyan-100"
+                  placeholder="Enter your username"
                 />
               </div>
             )}
@@ -129,9 +130,9 @@ const Auth = () => {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="bg-black/40 border-cyan-500/30 text-cyan-100 focus:border-cyan-400"
-                placeholder="your@email.com"
                 required
+                className="bg-gray-900/50 border-cyan-500/30 text-cyan-100"
+                placeholder="Enter your email"
               />
             </div>
 
@@ -142,10 +143,10 @@ const Auth = () => {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="bg-black/40 border-cyan-500/30 text-cyan-100 focus:border-cyan-400"
-                placeholder="••••••••"
                 required
                 minLength={6}
+                className="bg-gray-900/50 border-cyan-500/30 text-cyan-100"
+                placeholder="Enter your password"
               />
             </div>
 
@@ -167,12 +168,11 @@ const Auth = () => {
 
           <div className="mt-6 text-center">
             <button
+              type="button"
               onClick={() => setIsSignUp(!isSignUp)}
               className="text-cyan-400 hover:text-cyan-300 text-sm"
             >
-              {isSignUp
-                ? "Already have an account? Sign in"
-                : "Don't have an account? Sign up"}
+              {isSignUp ? "Already have an account? Sign In" : "Don't have an account? Sign Up"}
             </button>
           </div>
         </div>
