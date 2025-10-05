@@ -8,43 +8,37 @@ export class SupabaseService {
   private usersChannel: any = null;
 
   // User management
-  async createUser(username: string, clerkUserId: string): Promise<{ user: User | null; error: string | null }> {
+  async getCurrentUser(): Promise<User | null> {
     try {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) return null;
+
       const { data, error } = await supabase
         .from('users')
-        .insert([
-          {
-            username,
-            is_online: true,
-            last_seen: new Date().toISOString(),
-          },
-        ])
-        .select()
+        .select('*')
+        .eq('auth_user_id', authUser.id)
         .single();
 
-      if (error) {
-        return { user: null, error: error.message };
+      if (error || !data) {
+        console.error('Error fetching current user:', error);
+        return null;
       }
 
-      const user: User = {
+      return {
         id: data.id,
         username: data.username,
-        password: '', // No password storage with Clerk
+        password: '',
         isOnline: data.is_online,
         lastSeen: new Date(data.last_seen),
-        isTimedOut: false, // Simplified for security
-        timeoutUntil: undefined,
-        reportedBy: []
+        isTimedOut: data.is_timed_out || false,
+        timeoutUntil: data.timeout_until ? new Date(data.timeout_until) : undefined,
+        reportedBy: data.reported_by || []
       };
-
-      return { user, error: null };
     } catch (error) {
-      return { user: null, error: (error as Error).message };
+      console.error('Error getting current user:', error);
+      return null;
     }
   }
-
-  // Remove loginUser method - authentication handled by Clerk
-  // This method is no longer needed since we don't store passwords
 
   async logoutUser(userId: string): Promise<void> {
     await supabase

@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import ChatInterface from '../components/ChatInterface';
 import { useToast } from '@/hooks/use-toast';
 import { supabaseService } from '../services/supabaseService';
-import { useUser } from '@clerk/clerk-react';
+import { supabase } from '@/integrations/supabase/client';
 import { realTimeService } from '../utils/realTimeService';
+import type { Session } from '@supabase/supabase-js';
 
 export interface User {
   id: string;
@@ -35,32 +36,43 @@ export interface Message {
 }
 
 const Index = () => {
-  const { isSignedIn, user } = useUser();
   const navigate = useNavigate();
+  const [session, setSession] = useState<Session | null>(null);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const { toast } = useToast();
 
-  // Redirect to /auth when signed out
+  // Check authentication and redirect
   useEffect(() => {
-    if (!isSignedIn) {
-      navigate('/auth', { replace: true });
-    }
-  }, [isSignedIn, navigate]);
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (!session) {
+        navigate('/auth', { replace: true });
+      }
+    });
 
-  // Ensure DB user exists and hydrate currentUser after Clerk sign-in
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setSession(session);
+      
+      if (!session && event === 'SIGNED_OUT') {
+        setCurrentUser(null);
+        navigate('/auth', { replace: true });
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
+
+  // Initialize user data when session exists
   useEffect(() => {
-    if (isSignedIn && user && !currentUser) {
-      const username =
-        (user as any).username ||
-        (user as any).firstName ||
-        (user as any).emailAddresses?.[0]?.emailAddress.split('@')[0] ||
-        'User';
-      handleAuthSuccess((user as any).id, username);
+    if (session && !currentUser) {
+      handleAuthSuccess();
     }
-  }, [isSignedIn, user, currentUser]);
+  }, [session, currentUser]);
 
   // Check if user is currently timed out
   const isUserTimedOut = (user: User): boolean => {
@@ -134,29 +146,19 @@ const Index = () => {
     };
   }, [currentUser]);
 
-  const handleAuthSuccess = async (userId: string, username: string) => {
+  const handleAuthSuccess = async () => {
     try {
-      const allUsers = await supabaseService.getAllUsers();
-      // Find by username instead of Clerk ID (DB uses UUID ids)
-      let user = allUsers.find((u) => u.username === username);
+      if (!session) return;
 
-      if (!user) {
-        const { user: newUser } = await supabaseService.createUser(username, userId);
-        if (newUser) {
-          user = newUser;
-        }
-      } else {
-        // Sync by the actual DB user id
-        await supabaseService.syncUserStatus(user.id);
-      }
-
+      const user = await supabaseService.getCurrentUser();
+      
       if (user) {
-        // Clear any legacy local storage and presence state to avoid ghost activity
+        // Clear any legacy local storage and presence state
         try { realTimeService.clearData(); } catch {}
         setCurrentUser(user);
         toast({
           title: "Welcome!",
-          description: `Signed in as ${username}`,
+          description: `Signed in as ${user.username}`,
         });
       }
     } catch (error) {
@@ -167,6 +169,7 @@ const Index = () => {
   const handleLogout = async () => {
     if (currentUser) {
       await supabaseService.logoutUser(currentUser.id);
+      await supabase.auth.signOut();
       try { realTimeService.clearData(); } catch {}
       setCurrentUser(null);
       toast({
@@ -284,13 +287,13 @@ const Index = () => {
     });
   };
 
-  if (!isSignedIn) {
+  if (!session) {
     return null;
   }
   if (!currentUser) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p>Loading your chat...</p>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-gray-900 to-cyan-950">
+        <p className="text-cyan-400">Loading your chat...</p>
       </div>
     );
   }
