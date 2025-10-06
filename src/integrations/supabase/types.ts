@@ -129,39 +129,6 @@ export type Database = {
       }
     }
     Views: {
-      users_admin: {
-        Row: {
-          created_at: string | null
-          id: string | null
-          is_online: boolean | null
-          is_timed_out: boolean | null
-          last_seen: string | null
-          reported_by: string[] | null
-          timeout_until: string | null
-          username: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string | null
-          is_online?: boolean | null
-          is_timed_out?: boolean | null
-          last_seen?: string | null
-          reported_by?: string[] | null
-          timeout_until?: string | null
-          username?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          id?: string | null
-          is_online?: boolean | null
-          is_timed_out?: boolean | null
-          last_seen?: string | null
-          reported_by?: string[] | null
-          timeout_until?: string | null
-          username?: string | null
-        }
-        Relationships: []
-      }
       users_safe: {
         Row: {
           created_at: string | null
@@ -188,6 +155,19 @@ export type Database = {
       }
     }
     Functions: {
+      get_users_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          created_at: string
+          id: string
+          is_online: boolean
+          is_timed_out: boolean
+          last_seen: string
+          reported_by: string[]
+          timeout_until: string
+          username: string
+        }[]
+      }
       has_role: {
         Args: { _role: string; _user_id: string }
         Returns: boolean
