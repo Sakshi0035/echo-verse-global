@@ -56,14 +56,14 @@ export class SupabaseService {
 
   async getAllUsers(): Promise<User[]> {
     const { data, error } = await supabase
-      .from('users_safe')
-      .select('*')
-      .order('created_at', { ascending: true });
+      .rpc('get_users_safe');
 
     if (error) {
       console.error('Error fetching users:', error);
       return [];
     }
+
+    if (!data) return [];
 
     return data.map(user => ({
       id: user.id,
