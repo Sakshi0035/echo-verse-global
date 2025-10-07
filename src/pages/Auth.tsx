@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import cosmicBg from "@/assets/cosmic-bg.jpeg";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -117,8 +118,17 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-cyan-950 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div 
+      className="min-h-screen flex items-center justify-center p-4 relative"
+      style={{
+        backgroundImage: `url(${cosmicBg})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundAttachment: 'fixed'
+      }}
+    >
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+      <div className="w-full max-w-md relative z-10">
         <div className="bg-black/80 backdrop-blur-lg border border-cyan-500/30 rounded-2xl p-8 shadow-2xl">
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-cyan-400 mb-2">SafeYou Chat</h1>

@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { User, Message } from '../pages/Index';
+import cosmicBg from '@/assets/cosmic-bg.jpeg';
 import ChatSidebar from './ChatSidebar';
 import ChatMain from './ChatMain';
 import PrivateChat from './PrivateChat';
@@ -98,9 +99,18 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const publicMessages = safeMessages.filter(m => !m.isPrivate);
 
   return (
-    <div className="min-h-screen bg-black flex" style={{background: 'linear-gradient(135deg, #000000 0%, #001122 50%, #002244 100%)'}}>
+    <div 
+      className="min-h-screen flex relative" 
+      style={{
+        backgroundImage: `url(${cosmicBg})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundAttachment: 'fixed'
+      }}
+    >
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
       {/* Desktop Sidebar */}
-      <div className="hidden md:block">
+      <div className="hidden md:block relative z-10">
         <ChatSidebar
           currentUser={currentUser}
           users={safeUsers}
@@ -128,7 +138,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       </Sheet>
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col relative z-10">
         {/* Mobile Header with Menu */}
         <div className="md:hidden bg-black/95 backdrop-blur border-b border-cyan-500/30 p-4 flex items-center gap-3 neon-border">
           <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
